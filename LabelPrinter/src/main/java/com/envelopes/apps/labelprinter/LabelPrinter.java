@@ -2,14 +2,22 @@ package com.envelopes.apps.labelprinter;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.event.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -20,9 +28,12 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import org.controlsfx.dialog.ExceptionDialog;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.function.UnaryOperator;
 
 /**
  * Created by Manu on 7/7/2016.
@@ -32,10 +43,20 @@ public class LabelPrinter extends Application {
     private double xOffset = 0;
     private double yOffset = 0;
     protected Stage primaryStage;
+    protected java.util.List<Node> nodeReferences = new ArrayList<>();
 
     protected static Exception initializationException = null;
 
     protected BorderPane rootPane;
+
+    private UnaryOperator<TextFormatter.Change> filter = change -> {
+        String text = change.getText();
+        change.setText(text.toUpperCase());
+        return change;
+    };
+
+    TextFormatter<String> textFormatter = new TextFormatter<>(filter);
+
     public static void main(String[] args) {
         try {
             LabelHelper.initializeLabelPrinter();
@@ -65,6 +86,7 @@ public class LabelPrinter extends Application {
             scene.getStylesheets().add(LabelPrinter.class.getResource("/assets/css/LabelPrinter.css").toExternalForm());
             ResizeHelper.addResizeListener(primaryStage);
             primaryStage.show();
+            nodeReferences.get(0).requestFocus();
         }
     }
 
@@ -109,6 +131,7 @@ public class LabelPrinter extends Application {
         }
         if(labelObject != null) {
             rootPane.setCenter(addMainArea(labelObject));
+            nodeReferences.get(1).requestFocus();
 //            rootPane.setRight(addRightAreaForSKU());
         }
 
@@ -239,6 +262,7 @@ public class LabelPrinter extends Application {
             copies.setPrefSize(60, 40);
             copies.setText("1");
             copies.selectAll();
+            nodeReferences.add(1, copies);
             copies.setStyle("-fx-alignment: center;-fx-font-size:22px;-fx-font-weight: bold");
 
             Label label = new Label("Copies:");
@@ -359,8 +383,20 @@ public class LabelPrinter extends Application {
         hBox.setStyle("-fx-background-color: #336699;");
         hBox.setMinHeight(60);
         final TextField id = new TextField();
+        id.setTextFormatter(textFormatter);
         id.setPrefSize(300, 40);
-        id.setStyle("-fx-font-size:22px;-fx-font-weight: bold");
+        id.setStyle("-fx-font-size:22px;-fx-font-weight: bold;");
+        id.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                if(id.getText().isEmpty()) {
+                    showAlert(Alert.AlertType.ERROR, new String[] {"\nPlease enter a valid SKU."});
+                } else {
+                    showLabelForSKU(id.getText());
+                }
+
+            }
+        });
 
         Label label = new Label("SKU : ");
         label.setStyle("-fx-alignment: center-right;-fx-font-size:28px;");
@@ -377,8 +413,9 @@ public class LabelPrinter extends Application {
 
             }
         });
-        findButton.setPrefSize(40, 25);
 
+        findButton.setPrefSize(40, 25);
+        nodeReferences.add(0, id);
         hBox.getChildren().addAll(label, id, findButton);
         return hBox;
     }

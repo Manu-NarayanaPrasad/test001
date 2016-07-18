@@ -60,9 +60,9 @@ public class PDFPrinter {
             aset.add(new Copies(copies > MAX_COPIES ? MAX_COPIES : copies));
 
             // Send print job to default printer
-            if (pjob.printDialog(/*aset*/)) {
+//            if (pjob.printDialog(/*aset*/)) {
                 pjob.print(aset);
-            }
+//            }
         } catch (IOException e) {
             e.printStackTrace();
         } catch (PrinterException e) {
