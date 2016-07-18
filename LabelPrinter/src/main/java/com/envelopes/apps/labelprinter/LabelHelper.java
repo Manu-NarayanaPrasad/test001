@@ -2,12 +2,16 @@ package com.envelopes.apps.labelprinter;
 
 import com.google.gson.Gson;
 
+import javax.net.ssl.*;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -16,16 +20,18 @@ import java.util.Properties;
  * Created by Manu on 7/8/2016.
  */
 public class LabelHelper {
-    public static String LABEL_PRINTER_HOME = "C:/LabelPrinter/";
-    public static String LABEL_SERVER_END_POINT = "http://192.168.1.155/";
-    public static final String CONFIG_FILE_LOCATION = LABEL_PRINTER_HOME + "labelPrinter.properties";
-    public static final String LABEL_PRINTER_CACHE_LOCATION = LABEL_PRINTER_HOME + "ProductLabels/";
-    public static final String LABEL_PRINTER_DIRECTORY_GENERATION_PATH = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
-    public static final String GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "admin/control/serveLabelForStream?filePath=/uploads/productLabels/";
-    public static final String GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "admin/control/getLabelData?";
+    public static String LABEL_PRINTER_HOME = "/usr/local/LabelPrinter/";
+    public static String LABEL_SERVER_END_POINT = "https://envelopes.com/";
+    private static String API_KEY = "b1a6fcad-20e3-4dc4-9347-d266fa012bee";
+    private static String ENV = "PROD";
+    public static String CONFIG_FILE_LOCATION = LABEL_PRINTER_HOME + "labelPrinter.properties";
+    public static String LABEL_PRINTER_CACHE_LOCATION = LABEL_PRINTER_HOME + "ProductLabels/";
+    public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
+    public static String GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/serveLabelForStream?filePath=/uploads/productLabels/";
+    public static String GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData?";
     protected static String[] fileTypes = {".pdf", ".png"};
 
-    public static String initializeLabelPrinter() {
+    public static String initializeLabelPrinter() throws Exception {
         File testFile = new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH);
         if(!testFile.exists()) {
             new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH).mkdirs();
@@ -34,38 +40,46 @@ public class LabelHelper {
         return "";
     }
 
-    protected static void checkConfigFile() {
+    protected static void checkConfigFile() throws Exception {
         File configFile = new File(CONFIG_FILE_LOCATION);
         if(!configFile.exists()) {
-            try {
-                FileOutputStream fileOut = new FileOutputStream(configFile);
-                Properties properties = new Properties();
+            FileOutputStream fileOut = new FileOutputStream(configFile);
+            Properties properties = new Properties();
 
-                properties.setProperty("labelPrinterHome", "C:/LabelPrinter/");
-                properties.setProperty("labelServerEndPoint", "http://192.168.1.155/");
-                properties.store(fileOut, "Label Printer Configuration Properties");
-                fileOut.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            properties.setProperty("labelPrinterHome", LABEL_PRINTER_HOME);
+            properties.setProperty("labelServerEndPoint", LABEL_SERVER_END_POINT);
+            properties.setProperty("version", ENV);
+            properties.store(fileOut, "Label Printer Configuration Properties");
+            fileOut.close();
         } else {
-            try {
-                Properties properties = new Properties();
-                InputStream inputStream = new FileInputStream(new File(CONFIG_FILE_LOCATION));
-                properties.load(inputStream);
-                if(properties.containsKey("labelPrinterHome")) {
-                    LABEL_PRINTER_HOME = properties.getProperty("labelPrinterHome");
-                }
+            Properties properties = new Properties();
+            InputStream inputStream = new FileInputStream(new File(CONFIG_FILE_LOCATION));
+            properties.load(inputStream);
 
-                if(properties.containsKey("labelServerEndPoint")) {
-                    LABEL_SERVER_END_POINT = properties.getProperty("labelServerEndPoint");
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+            if(properties.containsKey("labelPrinterHome")) {
+                LABEL_PRINTER_HOME = properties.getProperty("labelPrinterHome");
             }
 
+            if(properties.containsKey("labelServerEndPoint")) {
+                LABEL_SERVER_END_POINT = properties.getProperty("labelServerEndPoint");
+            }
+
+            if(properties.containsKey("version")) {
+                ENV = properties.getProperty("version");
+            }
+
+            updateConstants();
+        }
+    }
+
+    protected static void updateConstants() {
+        CONFIG_FILE_LOCATION = LABEL_PRINTER_HOME + "labelPrinter.properties";
+        LABEL_PRINTER_CACHE_LOCATION = LABEL_PRINTER_HOME + "ProductLabels/";
+        LABEL_PRINTER_DIRECTORY_GENERATION_PATH = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
+        GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/serveLabelForStream?filePath=/uploads/productLabels/";
+        GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData?";
+        if(!ENV.equalsIgnoreCase("PROD")) {
+            disableSslVerification();
         }
     }
 
@@ -184,7 +198,7 @@ public class LabelHelper {
     }
 
     protected static String getLabelFileFromServer(String productId, String fileType, boolean packLabel) throws Exception {
-        URL url = new URL(GET_FILE_FROM_SERVER_END_POINT + (packLabel ? "packLabels/" : "") + productId  + fileType);
+        URL url = new URL(GET_FILE_FROM_SERVER_END_POINT + (packLabel ? "packLabels/" : "") + productId  + fileType + "&ts=" + System.currentTimeMillis());
         InputStream in = url.openStream();
         Files.copy(in, Paths.get(LABEL_PRINTER_CACHE_LOCATION + (packLabel ? "PackLabels/" : "") + productId + fileType), StandardCopyOption.REPLACE_EXISTING);
         in.close();
@@ -202,6 +216,11 @@ public class LabelHelper {
     }
 
     public static Map<String, Object> getJSON(String targetURL) throws Exception {
+        if(targetURL.contains("?")) {
+            targetURL += "&apiToken=" + API_KEY;
+        } else {
+            targetURL += "?apiToken=" + API_KEY;
+        }
         StringBuilder response = new StringBuilder();
         URL restServiceURL = new URL(targetURL);
 
@@ -222,6 +241,42 @@ public class LabelHelper {
         }
         httpConnection.disconnect();
         return new Gson().fromJson(response.toString(), HashMap.class);
+    }
+
+    private static void disableSslVerification() {
+        try
+        {
+            // Create a trust manager that does not validate certificate chains
+            TrustManager[] trustAllCerts = new TrustManager[] {new X509TrustManager() {
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                    return null;
+                }
+                public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                }
+                public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                }
+            }
+            };
+
+            // Install the all-trusting trust manager
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+
+            // Create all-trusting host name verifier
+            HostnameVerifier allHostsValid = new HostnameVerifier() {
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            };
+
+            // Install the all-trusting host verifier
+            HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
+        }
     }
 
 }

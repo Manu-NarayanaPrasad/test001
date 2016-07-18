@@ -33,31 +33,39 @@ public class LabelPrinter extends Application {
     private double yOffset = 0;
     protected Stage primaryStage;
 
+    protected static Exception initializationException = null;
+
     protected BorderPane rootPane;
     public static void main(String[] args) {
-        LabelHelper.initializeLabelPrinter();
+        try {
+            LabelHelper.initializeLabelPrinter();
+        } catch (Exception e) {
+            initializationException = new Exception("An initialization error occurred and can't open Label Printer", e);
+        }
         launch(args);
     }
 
     @Override
     public void start(Stage primaryStage) {
-        this.primaryStage = primaryStage;
-        primaryStage.initStyle(StageStyle.UNDECORATED);
+        if(initializationException != null) {
+            showError(initializationException);
+        } else {
+            this.primaryStage = primaryStage;
+            primaryStage.initStyle(StageStyle.UNDECORATED);
 
-        primaryStage.setMinWidth(800);
-        primaryStage.setMinHeight(600);
-        rootPane = new BorderPane();
-        rootPane.setId("root");
-        rootPane.setStyle("-fx-border-color: black; -fx-border-width: 1px; ");
-        rootPane.setTop(addTopArea());
-        rootPane.setBottom(addFooterArea());
-        Scene scene = new Scene(rootPane, 1200, 700, Color.TRANSPARENT);
-        primaryStage.setScene(scene);
-        scene.getStylesheets().add(LabelPrinter.class.getResource("/assets/css/LabelPrinter.css").toExternalForm());
-        ResizeHelper.addResizeListener(primaryStage);
-        primaryStage.show();
-
-//        showError(new NullPointerException("An error occurred"), new String[0]);
+            primaryStage.setMinWidth(800);
+            primaryStage.setMinHeight(600);
+            rootPane = new BorderPane();
+            rootPane.setId("root");
+            rootPane.setStyle("-fx-border-color: black; -fx-border-width: 1px; ");
+            rootPane.setTop(addTopArea());
+            rootPane.setBottom(addFooterArea());
+            Scene scene = new Scene(rootPane, 1200, 700, Color.TRANSPARENT);
+            primaryStage.setScene(scene);
+            scene.getStylesheets().add(LabelPrinter.class.getResource("/assets/css/LabelPrinter.css").toExternalForm());
+            ResizeHelper.addResizeListener(primaryStage);
+            primaryStage.show();
+        }
     }
 
     private void showError(Exception exception){
