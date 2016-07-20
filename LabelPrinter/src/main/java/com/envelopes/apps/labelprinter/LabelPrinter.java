@@ -2,8 +2,6 @@ package com.envelopes.apps.labelprinter;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.event.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -16,23 +14,21 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.controlsfx.control.MaskerPane;
 import org.controlsfx.dialog.ExceptionDialog;
 
-import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.UnaryOperator;
 
 /**
@@ -46,6 +42,14 @@ public class LabelPrinter extends Application {
     protected java.util.List<Node> nodeReferences = new ArrayList<>();
 
     protected static Exception initializationException = null;
+
+    private ExecutorService executorService = Executors.newCachedThreadPool();
+
+    private final MaskerPane maskerPane = new MaskerPane();
+    {
+        maskerPane.setText("Processing...");
+        maskerPane.setVisible(false);
+    }
 
     protected BorderPane rootPane;
 
@@ -81,6 +85,7 @@ public class LabelPrinter extends Application {
             rootPane.setStyle("-fx-border-color: black; -fx-border-width: 1px; ");
             rootPane.setTop(addTopArea());
             rootPane.setBottom(addFooterArea());
+            rootPane.setCenter(addMainArea(null));
             Scene scene = new Scene(rootPane, 1200, 700, Color.TRANSPARENT);
             primaryStage.setScene(scene);
             scene.getStylesheets().add(LabelPrinter.class.getResource("/assets/css/LabelPrinter.css").toExternalForm());
@@ -90,13 +95,14 @@ public class LabelPrinter extends Application {
         }
     }
 
-    private void showError(Exception exception){
+    private void showError(Throwable exception){
         ExceptionDialog dlg = new ExceptionDialog(exception);
         dlg.getDialogPane().setHeaderText("");
         dlg.setTitle("Label Printer - Envelopes.com");
         dlg.initStyle(StageStyle.UTILITY);
         dlg.initOwner(primaryStage);
         dlg.show();
+        setFocus();
     }
 
     private void showAlert(Alert.AlertType type, String[] args) {
@@ -107,34 +113,53 @@ public class LabelPrinter extends Application {
         dlg.initStyle(StageStyle.UTILITY);
         dlg.initOwner(primaryStage);
         dlg.show();
+        setFocus();
     }
 
-
-
-
-    protected void clearLabel() {
+    protected void clearCenter() {
         rootPane.setRight(null);
-        rootPane.setCenter(null);
+        if(((StackPane)rootPane.getCenter()).getChildren().size() > 1) {
+            ((StackPane) rootPane.getCenter()).getChildren().remove(0);
+        }
     }
 
+    protected void setFocus() {
+        nodeReferences.get(0).requestFocus();
+    }
 
     protected void showLabelForSKU(String productOrOrderId) {
-        LabelObject labelObject = null;
-        try {
-            labelObject = LabelHelper.getLabelForProductId(productOrOrderId, true);
-        } catch (LabelNotFoundException | RuntimeException e) {
-            if(e.getCause() != null) {
-                showError(e);
-            } else {
-                showAlert(Alert.AlertType.ERROR, new String[] {e.getMessage()});
+        maskerPane.setVisible(true);
+        clearCenter();
+        executorService.submit(() -> {
+            Future<LabelObject> future = executorService.submit(() -> LabelHelper.getLabelForProductId(productOrOrderId, true));
+            LabelObject labelObject = null;
+            try {
+                labelObject = future.get();
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    maskerPane.setVisible(false);
+                    if(e.getCause() != null) {
+                        if(e.getCause().getCause() != null) {
+                            showError(e.getCause().getCause());
+                        } else {
+                            showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()});
+                        }
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, new String[] {e.getMessage()});
+                    }
+                });
             }
-        }
-        if(labelObject != null) {
-            rootPane.setCenter(addMainArea(labelObject));
-            nodeReferences.get(1).requestFocus();
-//            rootPane.setRight(addRightAreaForSKU());
-        }
+            if(labelObject != null) {
 
+                final LabelObject obj = labelObject;
+                Platform.runLater(() -> {
+                    rootPane.setCenter(addMainArea(obj));
+                    nodeReferences.get(1).requestFocus();
+                    maskerPane.setVisible(false);
+                });
+//            rootPane.setRight(addRightAreaForSKU());
+            }
+        });
     }
 
     public VBox addTopArea() {
@@ -244,72 +269,83 @@ public class LabelPrinter extends Application {
         return scrollPane;
     }
 
-    public VBox addMainArea(final LabelObject labelObject) {
-        VBox vBox = new VBox();
-        vBox.setAlignment(Pos.TOP_CENTER);
-        vBox.setPadding(new Insets(10));
-        vBox.setSpacing(20);
-        vBox.setPrefSize(600, 400);
-
-        try {
-            HBox hBox = new HBox();
-
-            hBox.setAlignment(Pos.CENTER);
-            hBox.setPadding(new Insets(15, 12, 15, 12));
-            hBox.setSpacing(10);
-            hBox.setMinHeight(60);
-            final TextField copies = new TextField();
-            copies.setPrefSize(60, 40);
-            copies.setText("1");
-            copies.selectAll();
-            nodeReferences.add(1, copies);
-            copies.setStyle("-fx-alignment: center;-fx-font-size:22px;-fx-font-weight: bold");
-
-            Label label = new Label("Copies:");
-            label.setStyle("-fx-alignment: center-right;-fx-font-size:28px;");
-
-            hBox.getChildren().addAll(label, copies);
-            vBox.getChildren().add(hBox);
-
-            FileInputStream inputStream = new FileInputStream(labelObject.getLabelPath());
-            ImageView labelImage = new ImageView(new Image(inputStream));
-            labelImage.setSmooth(false);
-            labelImage.setPreserveRatio(true);
-            labelImage.setFitWidth(450);
-            vBox.getChildren().add(labelImage);
-            inputStream.close();
-
-            HBox buttons = new HBox();
-            buttons.setPadding(new Insets(10));
-            buttons.setSpacing(20);
-            buttons.setAlignment(Pos.CENTER);
-            Button printButton = new Button("Print");
-            printButton.setId("print");
-            printButton.setOnAction(new EventHandler<ActionEvent>() {
-                @Override
-                public void handle(ActionEvent actionEvent) {
-                    if(!copies.getText().isEmpty()) {
-                        System.out.println("printing....");
-                        new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()));
-                    }
-                }
-            });
-            printButton.setPrefWidth(200);
-            Button cancelButton = new Button("Cancel");
-            cancelButton.setId("cancel");
-            cancelButton.setOnAction(new EventHandler<ActionEvent>() {
-                @Override
-                public void handle(ActionEvent actionEvent) {
-                    clearLabel();
-                }
-            });
-            cancelButton.setPrefWidth(200);
-            buttons.getChildren().addAll(printButton, cancelButton);
-            vBox.getChildren().addAll(buttons);
-        } catch (IOException e) {
-            e.printStackTrace();
+    public StackPane addMainArea(final LabelObject labelObject) {
+        StackPane stackPane = (StackPane)rootPane.getCenter();
+        if(stackPane == null) {
+            stackPane = new StackPane();
         }
-        return vBox;
+        if(labelObject != null) {
+            VBox vBox = new VBox();
+            vBox.setAlignment(Pos.TOP_CENTER);
+            vBox.setPadding(new Insets(10));
+            vBox.setSpacing(20);
+            vBox.setPrefSize(600, 400);
+
+            try {
+                HBox hBox = new HBox();
+
+                hBox.setAlignment(Pos.CENTER);
+                hBox.setPadding(new Insets(15, 12, 15, 12));
+                hBox.setSpacing(10);
+                hBox.setMinHeight(60);
+                final TextField copies = new TextField();
+                copies.setPrefSize(60, 40);
+                copies.setText("1");
+                copies.selectAll();
+                nodeReferences.add(1, copies);
+                copies.setStyle("-fx-alignment: center;-fx-font-size:22px;-fx-font-weight: bold");
+
+                Label label = new Label("Copies:");
+                label.setStyle("-fx-alignment: center-right;-fx-font-size:28px;");
+
+                hBox.getChildren().addAll(label, copies);
+                vBox.getChildren().add(hBox);
+
+                FileInputStream inputStream = new FileInputStream(labelObject.getLabelPath());
+                ImageView labelImage = new ImageView(new Image(inputStream));
+                labelImage.setSmooth(false);
+                labelImage.setPreserveRatio(true);
+                labelImage.setFitWidth(450);
+                vBox.getChildren().add(labelImage);
+                inputStream.close();
+
+                HBox buttons = new HBox();
+                buttons.setPadding(new Insets(10));
+                buttons.setSpacing(20);
+                buttons.setAlignment(Pos.CENTER);
+                Button printButton = new Button("Print");
+                printButton.setId("print");
+                printButton.setOnAction(new EventHandler<ActionEvent>() {
+                    @Override
+                    public void handle(ActionEvent actionEvent) {
+                        if (!copies.getText().isEmpty()) {
+                            maskerPane.setVisible(true);
+                            new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()));
+//                            maskerPane.setVisible(false);
+                        }
+                    }
+                });
+                printButton.setPrefWidth(200);
+                Button cancelButton = new Button("Cancel");
+                cancelButton.setId("cancel");
+                cancelButton.setOnAction(new EventHandler<ActionEvent>() {
+                    @Override
+                    public void handle(ActionEvent actionEvent) {
+                        clearCenter();
+                        setFocus();
+                    }
+                });
+                cancelButton.setPrefWidth(200);
+                buttons.getChildren().addAll(printButton, cancelButton);
+                vBox.getChildren().addAll(buttons);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            stackPane.getChildren().add(0, vBox);
+        } else if(stackPane.getChildren().size() == 0) {
+            stackPane.getChildren().add(maskerPane);
+        }
+        return stackPane;
 
 
     }
