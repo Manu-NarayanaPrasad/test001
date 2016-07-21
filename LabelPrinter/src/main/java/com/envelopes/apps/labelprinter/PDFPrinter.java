@@ -19,37 +19,19 @@ import java.nio.channels.FileChannel;
 public class PDFPrinter {
     public static final int MAX_COPIES = 100;
 
-    public PDFPrinter(File file, int copies) {
+    public PDFPrinter(File file, int copies, Paper paper) {
         try {
             FileInputStream fis = new FileInputStream(file);
 
             FileChannel fc = fis.getChannel();
             ByteBuffer bb = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
-            PDFFile pdfFile = new PDFFile(bb); // Create PDF Print Page
+            PDFFile pdfFile = new PDFFile(bb);
             LabelPage pages = new LabelPage(pdfFile);
 
-            // Create Print Job
             PrinterJob pjob = PrinterJob.getPrinterJob();
             PageFormat pf = PrinterJob.getPrinterJob().defaultPage();
-            Paper label5x3 = new Paper();
-//            double paperWidth = 8.26; //A4
-//            double paperHeight = 11.69; //A4
-            double paperWidth = 5.0;
-            double paperHeight = 3.0;
-            label5x3.setSize(paperWidth * 72.0, paperHeight * 72.0);
 
-            /*
-             * set the margins respectively the imageable area
-             */
-            double leftMargin = 0.0;
-            double rightMargin = 0.0;
-            double topMargin = 0.0;
-            double bottomMargin = 0.0;
-
-            label5x3.setImageableArea(leftMargin * 72.0, topMargin * 72.0,
-                    (paperWidth - leftMargin - rightMargin) * 72.0,
-                    (paperHeight - topMargin - bottomMargin) * 72.0);
-            pf.setPaper(label5x3);
+            pf.setPaper(paper);
 
             pjob.setJobName(file.getName());
             Book book = new Book();

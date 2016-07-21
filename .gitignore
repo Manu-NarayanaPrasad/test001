@@ -1,5 +1,6 @@
 .idea
 target/
+*.zip
 *.iml
 *.ipr
 *.iws

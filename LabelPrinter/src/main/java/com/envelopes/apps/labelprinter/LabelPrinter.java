@@ -1,5 +1,6 @@
 package com.envelopes.apps.labelprinter;
 
+import com.envelopes.apps.labelprinter.paper.Label5x3;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.*;
@@ -320,7 +321,7 @@ public class LabelPrinter extends Application {
                     public void handle(ActionEvent actionEvent) {
                         if (!copies.getText().isEmpty()) {
                             maskerPane.setVisible(true);
-                            new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()));
+                            new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()), new Label5x3());
 //                            maskerPane.setVisible(false);
                         }
                     }
