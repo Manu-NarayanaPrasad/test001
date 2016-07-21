@@ -91,11 +91,12 @@ public class LabelHelper {
     public static LabelObject getLabelForProductId(String productId, boolean useCache) throws LabelNotFoundException {
 
         String productIdWithQty = "";
-        String cartonQty = "", boxQty = "", packQty = "";
+        String cartonQty = "", labelQty = "", packQty = "";
         long lastModifiedOnServer = 0;
         LabelObject labelObject = null;
         Map<String, Object> result;
         String[] labelPath;
+        boolean packLabel = false;
         try {
             result = getJSON(GET_LABEL_DATA_END_POINT + "productId=" + productId);
             if((boolean)result.get("success")) {
@@ -106,36 +107,16 @@ public class LabelHelper {
                     lastModifiedOnServer = new Long(labelData.get("LAST_MODIFIED"));
                     if (labelData.containsKey("PACK_QTY") && !(packQty =  labelData.get("PACK_QTY")).isEmpty()) {
                         productIdWithQty += "-" + packQty;
-                        if (labelData.containsKey("BOX_QTY")) {
-                            boxQty = labelData.get("BOX_QTY");
-                        }
-                        if (labelData.containsKey("CARTON_QTY")) {
-                            cartonQty = labelData.get("CARTON_QTY");
-                        }
+                        packLabel = true;
+                    } else if(labelData.containsKey("LABEL_QTY") && labelData.containsKey("CARTON_QTY") && !(labelQty = labelData.get("LABEL_QTY")).isEmpty() && !(cartonQty = labelData.get("CARTON_QTY")).isEmpty() && labelQty.equalsIgnoreCase(cartonQty)) {
+                        productIdWithQty += "-" + labelQty;
+                        packLabel = true;
                     }
                 }
             } else {
                 throw new LabelNotFoundException("An error occurred while retrieving the label from the server for the given ProductId : " + productId, null);
             }
 
-            if(!packQty.isEmpty()) {
-                int _packQty = Integer.parseInt(packQty);
-                if(!boxQty.isEmpty()) {
-                    int _boxQty = Integer.parseInt(boxQty);
-                    if(_packQty >= _boxQty && _packQty % _boxQty == 0) {
-                        packQty = "";
-                        productIdWithQty = productId;
-                    }
-                } else if(!cartonQty.isEmpty()) {
-                    int _cartonQty = Integer.parseInt(cartonQty);
-                    if(_packQty >= _cartonQty && _packQty % _cartonQty == 0) {
-                        packQty = "";
-                        productIdWithQty = productId;
-                    }
-                }
-            }
-
-            boolean packLabel = !packQty.isEmpty();
             labelObject = new LabelObject(productIdWithQty);
 
             labelPath = LabelHelper.getLabel(productIdWithQty, !isCacheExpired(productId, lastModifiedOnServer, useCache), packLabel);
