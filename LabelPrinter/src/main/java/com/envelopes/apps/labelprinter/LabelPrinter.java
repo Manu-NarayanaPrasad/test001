@@ -76,6 +76,7 @@ public class LabelPrinter extends Application {
         if(initializationException != null) {
             showError(initializationException);
         } else {
+            primaryStage.getIcons().add(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/app-logo.png")));
             this.primaryStage = primaryStage;
             primaryStage.initStyle(StageStyle.UNDECORATED);
 
@@ -90,6 +91,7 @@ public class LabelPrinter extends Application {
             Scene scene = new Scene(rootPane, 1200, 700, Color.TRANSPARENT);
             primaryStage.setScene(scene);
             scene.getStylesheets().add(LabelPrinter.class.getResource("/assets/css/LabelPrinter.css").toExternalForm());
+            scene.getStylesheets().add("http://fonts.googleapis.com/css?family=Lato&subset=latin,latin-ext");
             ResizeHelper.addResizeListener(primaryStage);
             primaryStage.show();
             nodeReferences.get(0).requestFocus();
@@ -281,6 +283,7 @@ public class LabelPrinter extends Application {
             vBox.setPadding(new Insets(10));
             vBox.setSpacing(20);
             vBox.setPrefSize(600, 400);
+//            vBox.setStyle("-fx-background-color: #495056;");
 
             try {
                 HBox hBox = new HBox();
@@ -320,9 +323,7 @@ public class LabelPrinter extends Application {
                     @Override
                     public void handle(ActionEvent actionEvent) {
                         if (!copies.getText().isEmpty()) {
-                            maskerPane.setVisible(true);
                             new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()), new Label5x3());
-//                            maskerPane.setVisible(false);
                         }
                     }
                 });
@@ -369,18 +370,56 @@ public class LabelPrinter extends Application {
 
         HBox titleBar = new HBox();
         titleBar.setAlignment(Pos.CENTER_LEFT);
-        titleBar.setStyle("-fx-background-color: #303641;");
+        titleBar.setStyle("-fx-background-color: #242C34;-fx-font-weight: bold;-fx-font-size: 14px ");
         titleBar.setPadding(new Insets(5, 5, 5, 12));
 
-        Label appName = new Label("Label Printer - Envelopes.com");
+        /*ImageView logo = new ImageView(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/logo-white.png")));
+        logo.setFitHeight(20);
+        logo.setPreserveRatio(true);
+        logo.setSmooth(true);
+        logo.setCache(true);*/
+
+        Label appName = new Label("L A B E L    P R I N T E R");
         appName.setStyle("-fx-text-fill: aliceblue;-fx-font-weight:bold;-fx-font-family:Arial;");
-        titleBar.getChildren().add(appName);
+        titleBar.getChildren().addAll(appName);
 
         HBox titleBarButtons = new HBox();
-        titleBarButtons.setStyle("-fx-background-color: #303641;");
+        titleBarButtons.setStyle("-fx-background-color: #242C34;");
+        Background minBackground = new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/min-button.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT));
+        Background maxBackground = new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/max-button.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT));
+        Background normalBackground = new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/normal-button.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT));
+        Background closeBackground = new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/close-button.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT));
 
-        Button closeBtn = new Button("X");
-        closeBtn.setStyle("-fx-background-color: #303641;-fx-text-fill: aliceblue;-fx-font-family:Arial;");
+
+        Button minBtn = new Button("   ");
+        minBtn.setBackground(minBackground);
+        minBtn.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                ((Stage) primaryStage.getScene().getWindow()).setIconified(true);
+            }
+        });
+
+
+        Button maxBtn = new Button("  ");
+
+        maxBtn.setBackground(maxBackground);
+        maxBtn.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                if(((Stage) primaryStage.getScene().getWindow()).isMaximized()) {
+                    ((Stage) primaryStage.getScene().getWindow()).setMaximized(false);
+                    maxBtn.setBackground(maxBackground);
+                } else {
+                    ((Stage) primaryStage.getScene().getWindow()).setMaximized(true);
+                    maxBtn.setBackground(normalBackground);
+                }
+
+            }
+        });
+
+        Button closeBtn = new Button("  ");
+        closeBtn.setBackground(closeBackground);
         closeBtn.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
@@ -388,7 +427,7 @@ public class LabelPrinter extends Application {
             }
         });
 
-        titleBarButtons.getChildren().addAll(closeBtn);
+        titleBarButtons.getChildren().addAll(minBtn, maxBtn, closeBtn);
         titleBarButtons.setAlignment(Pos.CENTER_RIGHT);
         titleBar.getChildren().addAll(titleBarButtons);
         HBox.setHgrow(titleBarButtons, Priority.ALWAYS);
@@ -417,7 +456,9 @@ public class LabelPrinter extends Application {
         hBox.setAlignment(Pos.CENTER);
         hBox.setPadding(new Insets(15, 12, 15, 12));
         hBox.setSpacing(10);   // Gap between nodes
-        hBox.setStyle("-fx-background-color: #336699;");
+//        hBox.setStyle("-fx-background-color: #336699;");
+//        hBox.setStyle("-fx-background-color: #495056;");
+        hBox.setStyle("-fx-background-color: #394046;");
         hBox.setMinHeight(60);
         final TextField id = new TextField();
         id.setTextFormatter(textFormatter);
@@ -436,7 +477,7 @@ public class LabelPrinter extends Application {
         });
 
         Label label = new Label("SKU : ");
-        label.setStyle("-fx-alignment: center-right;-fx-font-size:28px;");
+        label.setStyle("-fx-alignment: center-right;-fx-font-size:28px;-fx-text-fill: #FFFFFF");
 
         Button findButton = new Button("Go");
         findButton.setOnAction(new EventHandler<ActionEvent>() {
@@ -468,6 +509,14 @@ public class LabelPrinter extends Application {
     class WindowButtons extends HBox {
 
         public WindowButtons() {
+            Button minBtn = new Button("_");
+            minBtn.setStyle("-fx-background-color: #303641;-fx-text-fill: aliceblue;-fx-font-family:Arial;");
+            minBtn.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent actionEvent) {
+                    ((Stage) primaryStage.getScene().getWindow()).setIconified(true);
+                }
+            });
             Button closeBtn = new Button("X");
             closeBtn.setStyle("-fx-background-color: #303641;-fx-text-fill: aliceblue;-fx-font-family:Arial;");
             closeBtn.setOnAction(new EventHandler<ActionEvent>() {
@@ -476,7 +525,7 @@ public class LabelPrinter extends Application {
                     Platform.exit();
                 }
             });
-            this.getChildren().add(closeBtn);
+            this.getChildren().addAll(minBtn, closeBtn);
         }
     }
 }

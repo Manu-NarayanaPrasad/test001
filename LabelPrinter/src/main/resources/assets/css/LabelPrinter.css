@@ -2,6 +2,11 @@
     /*-fx-background-image: url("white_carbonfiber.png");*/
 }
 
+.text{
+    -fx-font-smoothing-type: gray;
+    -fx-font-family: Lato;
+}
+
 #cancel {
 /*    -fx-background-color:
             linear-gradient(#ffd65b, #e68400),
