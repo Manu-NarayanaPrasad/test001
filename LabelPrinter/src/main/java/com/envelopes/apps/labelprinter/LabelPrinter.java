@@ -293,7 +293,7 @@ public class LabelPrinter extends Application {
                 hBox.setSpacing(10);
                 hBox.setMinHeight(60);
                 final TextField copies = new TextField();
-                copies.setPrefSize(60, 40);
+                copies.setPrefSize(80, 40);
                 copies.setText("1");
                 copies.selectAll();
                 nodeReferences.add(1, copies);
@@ -322,8 +322,18 @@ public class LabelPrinter extends Application {
                 printButton.setOnAction(new EventHandler<ActionEvent>() {
                     @Override
                     public void handle(ActionEvent actionEvent) {
-                        if (!copies.getText().isEmpty()) {
-                            new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()), new Label5x3());
+                        int numOfCopies = 0;
+                        try {
+                            numOfCopies = Integer.parseInt(copies.getText());
+                            if(numOfCopies <= 0) {
+                                showAlert(Alert.AlertType.ERROR, new String[] {"Please enter a valid quantity for Copies"});
+                            } else if(numOfCopies > LabelHelper.MAX_COPIES) {
+                                showAlert(Alert.AlertType.ERROR, new String[] {"Maximum label that can be printed in one job is '" + LabelHelper.MAX_COPIES + "'. Please enter a quantity less than '" + LabelHelper.MAX_COPIES + "' for Copies"});
+                            } else {
+                                new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()), new Label5x3());
+                            }
+                        } catch (Exception e) {
+                            showError(e);
                         }
                     }
                 });

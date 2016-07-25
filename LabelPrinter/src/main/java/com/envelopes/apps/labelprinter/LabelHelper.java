@@ -29,6 +29,7 @@ public class LabelHelper {
     public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
     public static String GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/serveLabelForStream?filePath=/uploads/productLabels/";
     public static String GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData?";
+    public static int MAX_COPIES = 100;
     protected static String[] fileTypes = {".pdf", ".png"};
 
     public static String initializeLabelPrinter() throws Exception {
@@ -48,6 +49,7 @@ public class LabelHelper {
 
             properties.setProperty("labelPrinterHome", LABEL_PRINTER_HOME);
             properties.setProperty("labelServerEndPoint", LABEL_SERVER_END_POINT);
+            properties.setProperty("maxCopies", Integer.toString(MAX_COPIES));
             properties.setProperty("version", ENV);
             properties.store(fileOut, "Label Printer Configuration Properties");
             fileOut.close();
@@ -62,6 +64,10 @@ public class LabelHelper {
 
             if(properties.containsKey("labelServerEndPoint")) {
                 LABEL_SERVER_END_POINT = properties.getProperty("labelServerEndPoint");
+            }
+
+            if(properties.containsKey("maxCopies")) {
+                MAX_COPIES = Integer.parseInt(properties.getProperty("maxCopies"));
             }
 
             if(properties.containsKey("version")) {

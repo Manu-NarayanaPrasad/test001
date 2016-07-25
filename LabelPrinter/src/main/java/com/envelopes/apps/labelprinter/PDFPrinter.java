@@ -17,7 +17,6 @@ import java.nio.channels.FileChannel;
  * Created by Manu on 7/13/2016.
  */
 public class PDFPrinter {
-    public static final int MAX_COPIES = 100;
 
     public PDFPrinter(File file, int copies, Paper paper) {
         try {
@@ -39,7 +38,7 @@ public class PDFPrinter {
             pjob.setPageable(book);
 
             PrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
-            aset.add(new Copies(copies > MAX_COPIES ? MAX_COPIES : copies));
+            aset.add(new Copies(copies > LabelHelper.MAX_COPIES ? LabelHelper.MAX_COPIES : copies));
 
             // Send print job to default printer
 //            if (pjob.printDialog(/*aset*/)) {
