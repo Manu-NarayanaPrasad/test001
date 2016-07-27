@@ -37,8 +37,8 @@ import java.util.function.UnaryOperator;
  */
 public class LabelPrinter extends Application {
 
-    private double xOffset = 0;
-    private double yOffset = 0;
+    protected double xOffset = 0;
+    protected double yOffset = 0;
     protected Stage primaryStage;
     protected java.util.List<Node> nodeReferences = new ArrayList<>();
 
@@ -76,27 +76,31 @@ public class LabelPrinter extends Application {
         if(initializationException != null) {
             showError(initializationException);
         } else {
-            primaryStage.setAlwaysOnTop(true);
-            primaryStage.getIcons().add(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/app-logo.png")));
-            this.primaryStage = primaryStage;
-            primaryStage.initStyle(StageStyle.UNDECORATED);
-
-            primaryStage.setMinWidth(800);
-            primaryStage.setMinHeight(600);
-            rootPane = new BorderPane();
-            rootPane.setId("root");
-            rootPane.setStyle("-fx-border-color: black; -fx-border-width: 1px; ");
-            rootPane.setTop(addTopArea());
-            rootPane.setBottom(addFooterArea());
-            rootPane.setCenter(addMainArea(null));
-            Scene scene = new Scene(rootPane, 1200, 700, Color.TRANSPARENT);
-            primaryStage.setScene(scene);
-            scene.getStylesheets().add(LabelPrinter.class.getResource("/assets/css/LabelPrinter.css").toExternalForm());
-            scene.getStylesheets().add("http://fonts.googleapis.com/css?family=Lato&subset=latin,latin-ext");
-            ResizeHelper.addResizeListener(primaryStage);
-            primaryStage.show();
-            nodeReferences.get(0).requestFocus();
+            buildUI(primaryStage);
         }
+    }
+
+    protected void buildUI(Stage primaryStage) {
+        primaryStage.setAlwaysOnTop(true);
+        primaryStage.getIcons().add(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/app-logo.png")));
+        this.primaryStage = primaryStage;
+        primaryStage.initStyle(StageStyle.UNDECORATED);
+
+        primaryStage.setMinWidth(800);
+        primaryStage.setMinHeight(600);
+        rootPane = new BorderPane();
+        rootPane.setId("root");
+        rootPane.setStyle("-fx-border-color: black; -fx-border-width: 1px; ");
+        rootPane.setTop(addTopArea());
+        rootPane.setBottom(addFooterArea());
+        rootPane.setCenter(addMainArea(null));
+        Scene scene = new Scene(rootPane, 1200, 700, Color.TRANSPARENT);
+        primaryStage.setScene(scene);
+        scene.getStylesheets().add(LabelPrinter.class.getResource("/assets/css/LabelPrinter.css").toExternalForm());
+        scene.getStylesheets().add("http://fonts.googleapis.com/css?family=Lato&subset=latin,latin-ext");
+        ResizeHelper.addResizeListener(primaryStage);
+        primaryStage.show();
+        nodeReferences.get(0).requestFocus();
     }
 
     protected void showError(Throwable exception){
@@ -313,7 +317,7 @@ public class LabelPrinter extends Application {
                 } else {
                     labelPane.setPadding(new Insets(5));
                 }
-                labelPane.setStyle("fx-padding: 10;-fx-background-color: #ffffff;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
+                labelPane.setStyle("fx-padding: 10;-fx-background-color: firebrick;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
                 labelPane.setMaxWidth(labelObject.isMiniLabel() ? 300 : 450);
                 FileInputStream inputStream = new FileInputStream(labelObject.getLabelPath());
                 ImageView labelImage = new ImageView(new Image(inputStream));
@@ -392,19 +396,20 @@ public class LabelPrinter extends Application {
     public HBox addTitleBar(final Stage primaryStage) {
 
         HBox titleBar = new HBox();
+        titleBar.setSpacing(10);
         titleBar.setAlignment(Pos.CENTER_LEFT);
         titleBar.setStyle("-fx-background-color: #242C34;-fx-font-weight: bold;-fx-font-size: 14px ");
         titleBar.setPadding(new Insets(5, 5, 5, 12));
 
-        /*ImageView logo = new ImageView(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/logo-white.png")));
-        logo.setFitHeight(20);
+        ImageView logo = new ImageView(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/logo.png")));
+        logo.setFitWidth(60);
         logo.setPreserveRatio(true);
         logo.setSmooth(true);
-        logo.setCache(true);*/
+        logo.setCache(true);
 
         Label appName = new Label("L A B E L    P R I N T E R");
         appName.setStyle("-fx-text-fill: aliceblue;-fx-font-weight:bold;-fx-font-family:Arial;");
-        titleBar.getChildren().addAll(appName);
+        titleBar.getChildren().addAll(logo, appName);
 
         HBox titleBarButtons = new HBox();
         titleBarButtons.setStyle("-fx-background-color: #242C34;");

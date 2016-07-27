@@ -7,6 +7,20 @@
     -fx-font-family: Lato;
 }
 
+#widget-root {
+    -fx-background-radius: 10;
+    /*-fx-padding: 10;*/
+    -fx-background-color: #242C34;
+    -fx-background-radius: 5;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);
+    /*-fx-cursor: move;*/
+    /*-fx-background-image:url('audiR8.jpg');*/
+    /*-fx-border-radius: 30;*/
+    /*-fx-border-width:5;*/
+    /*-fx-border-color:blue;*/
+
+}
+
 #cancel {
 /*    -fx-background-color:
             linear-gradient(#ffd65b, #e68400),
@@ -51,6 +65,17 @@
     -fx-font-weight: bold;
     -fx-font-size: 14px;
     -fx-padding: 10 20 10 20;
+}
+
+#print-small {
+
+    -fx-background-color: linear-gradient(green, darkgreen);
+    -fx-background-radius: 5;
+    -fx-background-insets: 0;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-padding: 6px;
 }
 
 #style1,#style2,#style3,#style4,#style5,#style6,#style7,#style8,#style9,#style10,#style11 {
