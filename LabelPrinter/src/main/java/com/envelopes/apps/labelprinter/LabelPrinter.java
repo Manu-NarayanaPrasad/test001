@@ -76,6 +76,7 @@ public class LabelPrinter extends Application {
         if(initializationException != null) {
             showError(initializationException);
         } else {
+            primaryStage.setAlwaysOnTop(true);
             primaryStage.getIcons().add(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/app-logo.png")));
             this.primaryStage = primaryStage;
             primaryStage.initStyle(StageStyle.UNDECORATED);
@@ -98,7 +99,7 @@ public class LabelPrinter extends Application {
         }
     }
 
-    private void showError(Throwable exception){
+    protected void showError(Throwable exception){
         ExceptionDialog dlg = new ExceptionDialog(exception);
         dlg.getDialogPane().setHeaderText("");
         dlg.setTitle("Label Printer - Envelopes.com");
@@ -108,7 +109,7 @@ public class LabelPrinter extends Application {
         setFocus();
     }
 
-    private void showAlert(Alert.AlertType type, String[] args) {
+    protected void showAlert(Alert.AlertType type, String[] args) {
         Alert dlg = new Alert(type, "");
         dlg.setHeaderText("");
         dlg.setTitle("Label Printer - Envelopes.com");
@@ -134,7 +135,7 @@ public class LabelPrinter extends Application {
         maskerPane.setVisible(true);
         clearCenter();
         executorService.submit(() -> {
-            Future<LabelObject> future = executorService.submit(() -> LabelHelper.getLabelForProductId(productOrOrderId, true));
+            Future<LabelObject> future = executorService.submit(() -> LabelHelper.getLabelForProductId(productOrOrderId, true, LabelHelper.DEFAULT_LABEL_TYPE.startsWith("MINI")));
             LabelObject labelObject = null;
             try {
                 labelObject = future.get();
@@ -276,6 +277,7 @@ public class LabelPrinter extends Application {
         StackPane stackPane = (StackPane)rootPane.getCenter();
         if(stackPane == null) {
             stackPane = new StackPane();
+            stackPane.setStyle("-fx-background-color: #899096;");
         }
         if(labelObject != null) {
             VBox vBox = new VBox();
@@ -305,13 +307,24 @@ public class LabelPrinter extends Application {
                 hBox.getChildren().addAll(label, copies);
                 vBox.getChildren().add(hBox);
 
+                StackPane labelPane = new StackPane();
+                if(labelObject.isMiniLabel()) {
+                    labelPane.setPadding(new Insets(10));
+                } else {
+                    labelPane.setPadding(new Insets(5));
+                }
+                labelPane.setStyle("fx-padding: 10;-fx-background-color: #ffffff;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
+                labelPane.setMaxWidth(labelObject.isMiniLabel() ? 300 : 450);
                 FileInputStream inputStream = new FileInputStream(labelObject.getLabelPath());
                 ImageView labelImage = new ImageView(new Image(inputStream));
                 labelImage.setSmooth(false);
                 labelImage.setPreserveRatio(true);
-                labelImage.setFitWidth(450);
-                vBox.getChildren().add(labelImage);
+
+                labelImage.setFitWidth(labelObject.isMiniLabel() ? 300 : 450);
+                labelPane.getChildren().add(labelImage);
                 inputStream.close();
+
+                vBox.getChildren().add(labelPane);
 
                 HBox buttons = new HBox();
                 buttons.setPadding(new Insets(10));

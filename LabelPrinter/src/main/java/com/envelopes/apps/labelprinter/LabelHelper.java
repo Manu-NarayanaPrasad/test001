@@ -22,20 +22,27 @@ import java.util.Properties;
 public class LabelHelper {
     public static String LABEL_PRINTER_HOME = "/usr/local/LabelPrinter/";
     public static String LABEL_SERVER_END_POINT = "https://envelopes.com/";
+    public static String DEFAULT_LABEL_TYPE = "LABEL";
     private static String API_KEY = "b1a6fcad-20e3-4dc4-9347-d266fa012bee";
     private static String ENV = "PROD";
     public static String CONFIG_FILE_LOCATION = LABEL_PRINTER_HOME + "labelPrinter.properties";
     public static String LABEL_PRINTER_CACHE_LOCATION = LABEL_PRINTER_HOME + "ProductLabels/";
-    public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
+    public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH1 = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
+    public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH2 = LABEL_PRINTER_CACHE_LOCATION + "MiniLabels/";
     public static String GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/serveLabelForStream?filePath=/uploads/productLabels/";
     public static String GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData?";
     public static int MAX_COPIES = 100;
     protected static String[] fileTypes = {".pdf", ".png"};
 
     public static String initializeLabelPrinter() throws Exception {
-        File testFile = new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH);
+        File testFile = new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH1);
         if(!testFile.exists()) {
-            new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH).mkdirs();
+            new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH1).mkdirs();
+        }
+
+        testFile = new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH2);
+        if(!testFile.exists()) {
+            new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH2).mkdirs();
         }
         checkConfigFile();
         return "";
@@ -49,6 +56,7 @@ public class LabelHelper {
 
             properties.setProperty("labelPrinterHome", LABEL_PRINTER_HOME);
             properties.setProperty("labelServerEndPoint", LABEL_SERVER_END_POINT);
+            properties.setProperty("defaultLabelType", DEFAULT_LABEL_TYPE);
             properties.setProperty("maxCopies", Integer.toString(MAX_COPIES));
             properties.setProperty("version", ENV);
             properties.store(fileOut, "Label Printer Configuration Properties");
@@ -70,6 +78,10 @@ public class LabelHelper {
                 MAX_COPIES = Integer.parseInt(properties.getProperty("maxCopies"));
             }
 
+            if(properties.containsKey("defaultLabelType")) {
+                DEFAULT_LABEL_TYPE = properties.getProperty("defaultLabelType");
+            }
+
             if(properties.containsKey("version")) {
                 ENV = properties.getProperty("version");
             }
@@ -81,7 +93,8 @@ public class LabelHelper {
     protected static void updateConstants() {
         CONFIG_FILE_LOCATION = LABEL_PRINTER_HOME + "labelPrinter.properties";
         LABEL_PRINTER_CACHE_LOCATION = LABEL_PRINTER_HOME + "ProductLabels/";
-        LABEL_PRINTER_DIRECTORY_GENERATION_PATH = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
+        LABEL_PRINTER_DIRECTORY_GENERATION_PATH1 = LABEL_PRINTER_CACHE_LOCATION + "PackLabels/";
+        LABEL_PRINTER_DIRECTORY_GENERATION_PATH2 = LABEL_PRINTER_CACHE_LOCATION + "MiniLabels/";
         GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/serveLabelForStream?filePath=/uploads/productLabels/";
         GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData?";
         if(!ENV.equalsIgnoreCase("PROD")) {
@@ -94,7 +107,7 @@ public class LabelHelper {
         return "";
     }
 
-    public static LabelObject getLabelForProductId(String productId, boolean useCache) throws LabelNotFoundException {
+    public static LabelObject getLabelForProductId(String productId, boolean useCache, boolean miniLabel) throws LabelNotFoundException {
 
         String productIdWithQty = "";
         String cartonQty = "", labelQty = "", packQty = "";
@@ -104,14 +117,16 @@ public class LabelHelper {
         String[] labelPath;
         boolean packLabel = false;
         try {
-            result = getJSON(GET_LABEL_DATA_END_POINT + "productId=" + productId);
+            result = getJSON(GET_LABEL_DATA_END_POINT + "productId=" + productId + (miniLabel ? "&miniLabel=true" : ""));
             if((boolean)result.get("success")) {
                 Map<String, String> labelData = (Map<String, String>)result.get("labelData");
                 if (labelData.containsKey("PRODUCT_ID") && !labelData.get("PRODUCT_ID").isEmpty()) {
                     productId = labelData.get("PRODUCT_ID");
                     productIdWithQty = productId;
                     lastModifiedOnServer = new Long(labelData.get("LAST_MODIFIED"));
-                    if (labelData.containsKey("PACK_QTY") && !(packQty =  labelData.get("PACK_QTY")).isEmpty()) {
+                    if(labelData.containsKey("SAMPLES_LABEL") && ((String)labelData.get("SAMPLES_LABEL")).equalsIgnoreCase("true")) {
+                        productIdWithQty += "-SAMPLES";
+                    } else if (labelData.containsKey("PACK_QTY") && !(packQty =  labelData.get("PACK_QTY")).isEmpty()) {
                         productIdWithQty += "-" + packQty;
                         packLabel = true;
                     } else if(labelData.containsKey("LABEL_QTY") && labelData.containsKey("CARTON_QTY") && !(labelQty = labelData.get("LABEL_QTY")).isEmpty() && !(cartonQty = labelData.get("CARTON_QTY")).isEmpty() && labelQty.equalsIgnoreCase(cartonQty)) {
@@ -123,9 +138,9 @@ public class LabelHelper {
                 throw new LabelNotFoundException("An error occurred while retrieving the label from the server for the given ProductId : " + productId, null);
             }
 
-            labelObject = new LabelObject(productIdWithQty);
+            labelObject = new LabelObject(productIdWithQty, miniLabel);
 
-            labelPath = LabelHelper.getLabel(productIdWithQty, !isCacheExpired(productId, lastModifiedOnServer, useCache), packLabel);
+            labelPath = LabelHelper.getLabel(productIdWithQty, !isCacheExpired(productId, lastModifiedOnServer, useCache), packLabel, miniLabel);
 
         } catch(Exception e) {
             throw new LabelNotFoundException("An error occurred while retrieving the label from the server for the given ProductId : " + productId, e);
@@ -138,35 +153,35 @@ public class LabelHelper {
         return labelObject;
     }
 
-    protected static String[] getLabel(String productId, boolean useCache, boolean packLabel) throws Exception {
-        return getLabelFromLocal(productId, useCache, packLabel);
+    protected static String[] getLabel(String productId, boolean useCache, boolean packLabel, boolean miniLabel) throws Exception {
+        return getLabelFromLocal(productId, useCache, packLabel, miniLabel);
     }
 
-    protected static String[] getLabelFromLocal(String productId, boolean useCache, boolean packLabel) throws Exception {
+    protected static String[] getLabelFromLocal(String productId, boolean useCache, boolean packLabel, boolean miniLabel) throws Exception {
         String[] labelPath = new String[fileTypes.length];
-        boolean ignoreCache = shouldIgnoreCache(productId, useCache, packLabel);
+        boolean ignoreCache = shouldIgnoreCache(productId, useCache, packLabel, miniLabel);
         for(int i = 0; i < fileTypes.length; i ++) {
-            labelPath[i] = getLabelFromLocal(productId, fileTypes[i], !ignoreCache, packLabel);
+            labelPath[i] = getLabelFromLocal(productId, fileTypes[i], !ignoreCache, packLabel, miniLabel);
         }
         return labelPath;
     }
 
-    protected static String getLabelFromLocal(String productId, String fileType, boolean useCache, boolean packLabel) throws Exception {
-        File label = new File(LABEL_PRINTER_CACHE_LOCATION + (packLabel ? "PackLabels/" : "")  + productId + fileType);
+    protected static String getLabelFromLocal(String productId, String fileType, boolean useCache, boolean packLabel, boolean miniLabel) throws Exception {
+        File label = new File(LABEL_PRINTER_CACHE_LOCATION + (miniLabel ? "MiniLabels/" : packLabel ? "PackLabels/" : "")  + productId + fileType);
         if(label.exists() && useCache) {
             return label.getAbsolutePath();
         } else {
-            return getLabelFileFromServer(productId, fileType, packLabel);
+            return getLabelFileFromServer(productId, fileType, packLabel, miniLabel);
         }
     }
 
-    protected static boolean shouldIgnoreCache(String productId, boolean useCache, boolean packLabel) {
+    protected static boolean shouldIgnoreCache(String productId, boolean useCache, boolean packLabel, boolean miniLabel) {
         boolean ignoreCache = !useCache;
         if(ignoreCache) {
             return ignoreCache;
         }
         for(int i = 0; i < fileTypes.length; i ++) {
-            ignoreCache = !new File(LABEL_PRINTER_CACHE_LOCATION + (packLabel ? "PackLabels/" : "") + productId + fileTypes[i]).exists();
+            ignoreCache = !new File(LABEL_PRINTER_CACHE_LOCATION + (miniLabel ? "MiniLabels/" : packLabel ? "PackLabels/" : "") + productId + fileTypes[i]).exists();
             if(ignoreCache) {
                 return ignoreCache;
             }
@@ -184,13 +199,13 @@ public class LabelHelper {
         return cacheExpired;
     }
 
-    protected static String getLabelFileFromServer(String productId, String fileType, boolean packLabel) throws Exception {
-        URL url = new URL(GET_FILE_FROM_SERVER_END_POINT + (packLabel ? "packLabels/" : "") + productId  + fileType + "&ts=" + System.currentTimeMillis());
+    protected static String getLabelFileFromServer(String productId, String fileType, boolean packLabel, boolean miniLabel) throws Exception {
+        URL url = new URL(GET_FILE_FROM_SERVER_END_POINT + (miniLabel ? "miniLabels/" : packLabel ? "packLabels/" : "") + productId  + fileType + "&ts=" + System.currentTimeMillis());
         InputStream in = url.openStream();
-        Files.copy(in, Paths.get(LABEL_PRINTER_CACHE_LOCATION + (packLabel ? "PackLabels/" : "") + productId + fileType), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(in, Paths.get(LABEL_PRINTER_CACHE_LOCATION + (miniLabel ? "MiniLabels/" :packLabel ? "PackLabels/" : "") + productId + fileType), StandardCopyOption.REPLACE_EXISTING);
         in.close();
         File downloadedFile;
-        if((downloadedFile = new File(LABEL_PRINTER_CACHE_LOCATION + (packLabel ? "PackLabels/" : "") + productId + fileType)).length() <= 0) {
+        if((downloadedFile = new File(LABEL_PRINTER_CACHE_LOCATION + (miniLabel ? "MiniLabels/" :packLabel ? "PackLabels/" : "") + productId + fileType)).length() <= 0) {
             downloadedFile.delete();
             return "";
         }

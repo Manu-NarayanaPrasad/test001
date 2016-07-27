@@ -13,11 +13,17 @@ public class LabelObject {
     protected String productIdOrOrderId;
     protected boolean orderLabels = false;
     protected boolean packLabel = false;
+    protected boolean miniLabel = false;
     protected List<LabelObject> relatedLabelObjects = new ArrayList<>();
 
     public LabelObject(String productIdOrOrderId) {
         this.productIdOrOrderId = productIdOrOrderId;
         this.orderLabels = LabelHelper.isOrderId(productIdOrOrderId);
+    }
+
+    public LabelObject(String productIdOrOrderId, boolean miniLabel) {
+        this(productIdOrOrderId);
+        this.miniLabel = miniLabel;
     }
 
     public String getLabelPath() {
@@ -46,6 +52,10 @@ public class LabelObject {
 
     public boolean isPackLabel() {
         return packLabel;
+    }
+
+    public boolean isMiniLabel() {
+        return miniLabel;
     }
 
     public List<LabelObject> getRelatedLabelObjects() {
