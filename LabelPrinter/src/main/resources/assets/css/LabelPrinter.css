@@ -67,9 +67,7 @@
     -fx-padding: 10 20 10 20;
 }
 
-#print-small {
-
-    -fx-background-color: linear-gradient(green, darkgreen);
+.mini-btn {
     -fx-background-radius: 5;
     -fx-background-insets: 0;
     -fx-text-fill: white;
@@ -77,6 +75,24 @@
     -fx-font-size: 10px;
     -fx-padding: 6px;
 }
+
+.green-btn {
+    -fx-background-color: linear-gradient(green, darkgreen);
+}
+
+.red-btn {
+    -fx-background-color: linear-gradient(#ff5400, #be1d00);
+}
+
+.oswald-bold {
+    -fx-font-family: 'Oswald', sans-serif;
+    -fx-font-weight: 400;
+    -fx-font-size: 18px;
+    -fx-text-fill: #FFFFFF;
+}
+
+
+
 
 #style1,#style2,#style3,#style4,#style5,#style6,#style7,#style8,#style9,#style10,#style11 {
     -fx-background-color:
@@ -101,4 +117,35 @@
 
 #style1,#style2,#style3,#style4,#style5,#style6,#style7,#style8,#style9,#style10,#style11 Text {
     -fx-effect: dropshadow( one-pass-box , rgba(0,0,0,0.8) , 0, 0.0 , 0 , 1);
+}
+
+
+.label .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.label .scroll-bar .increment-button {
+    /*visibility: hidden;*/
+    -fx-background-color: transparent;
+}
+
+.label .scroll-bar .decrement-button {
+    /*visibility: hidden;*/
+    -fx-background-color: transparent;
+}
+
+.label .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+.label .scroll-bar:vertical .track-background {
+    visibility: hidden;
+}
+
+.label .scroll-bar:vertical .track {
+    visibility: hidden;
+}
+
+.label .hide-thumb .scroll-bar:vertical .thumb {
+    -fx-background-color: transparent;
 }

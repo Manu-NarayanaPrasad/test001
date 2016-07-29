@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -41,6 +42,7 @@ public class LabelPrinter extends Application {
     protected double yOffset = 0;
     protected Stage primaryStage;
     protected java.util.List<Node> nodeReferences = new ArrayList<>();
+    protected java.util.Map<String, Node> nodeReferenceMap = new HashMap<>();
 
     protected static Exception initializationException = null;
 
@@ -113,13 +115,13 @@ public class LabelPrinter extends Application {
         setFocus();
     }
 
-    protected void showAlert(Alert.AlertType type, String[] args) {
+    protected void showAlert(Alert.AlertType type, String[] args, Stage owner) {
         Alert dlg = new Alert(type, "");
         dlg.setHeaderText("");
         dlg.setTitle("Label Printer - Envelopes.com");
         dlg.getDialogPane().setContentText(args[0]);
         dlg.initStyle(StageStyle.UTILITY);
-        dlg.initOwner(primaryStage);
+        dlg.initOwner(owner);
         dlg.show();
         setFocus();
     }
@@ -150,10 +152,10 @@ public class LabelPrinter extends Application {
                         if(e.getCause().getCause() != null) {
                             showError(e.getCause().getCause());
                         } else {
-                            showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()});
+                            showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()}, primaryStage);
                         }
                     } else {
-                        showAlert(Alert.AlertType.ERROR, new String[] {e.getMessage()});
+                        showAlert(Alert.AlertType.ERROR, new String[] {e.getMessage()}, primaryStage);
                     }
                 });
             }
@@ -162,7 +164,9 @@ public class LabelPrinter extends Application {
                 final LabelObject obj = labelObject;
                 Platform.runLater(() -> {
                     rootPane.setCenter(addMainArea(obj));
-                    nodeReferences.get(1).requestFocus();
+                    if(!obj.isMiniLabel()) {
+                        nodeReferences.get(1).requestFocus();
+                    }
                     maskerPane.setVisible(false);
                 });
 //            rootPane.setRight(addRightAreaForSKU());
@@ -286,89 +290,130 @@ public class LabelPrinter extends Application {
         if(labelObject != null) {
             VBox vBox = new VBox();
             vBox.setAlignment(Pos.TOP_CENTER);
-            vBox.setPadding(new Insets(10));
+            vBox.setPadding(new Insets(10, 2, 10, 10));
             vBox.setSpacing(20);
             vBox.setPrefSize(600, 400);
 //            vBox.setStyle("-fx-background-color: #495056;");
 
-            try {
-                HBox hBox = new HBox();
+            if(labelObject.isMiniLabel()) {
+                ScrollPane scrollPane = new ScrollPane();
+                scrollPane.setPrefWidth(335);
+//                scrollPane.setStyle("-fx-background-color: #899096");
+                vBox.getStyleClass().add("label");
+                vBox.getChildren().addAll(scrollPane);
+                scrollPane.setFitToWidth(true);
+                scrollPane.setFitToHeight(true);
+                FlowPane flowPane = new FlowPane();
+                flowPane.setPadding(new Insets(10));
+                flowPane.setStyle("-fx-background-color: #899096");
+                flowPane.setVgap(10);
+                flowPane.setHgap(10);
 
-                hBox.setAlignment(Pos.CENTER);
-                hBox.setPadding(new Insets(15, 12, 15, 12));
-                hBox.setSpacing(10);
-                hBox.setMinHeight(60);
-                final TextField copies = new TextField();
-                copies.setPrefSize(80, 40);
-                copies.setText("1");
-                copies.selectAll();
-                nodeReferences.add(1, copies);
-                copies.setStyle("-fx-alignment: center;-fx-font-size:22px;-fx-font-weight: bold");
+                for(int i = 0; i < 15; i ++) {
+                    try {
+                        StackPane labelPane = new StackPane();
 
-                Label label = new Label("Copies:");
-                label.setStyle("-fx-alignment: center-right;-fx-font-size:28px;");
-
-                hBox.getChildren().addAll(label, copies);
-                vBox.getChildren().add(hBox);
-
-                StackPane labelPane = new StackPane();
-                if(labelObject.isMiniLabel()) {
-                    labelPane.setPadding(new Insets(10));
-                } else {
-                    labelPane.setPadding(new Insets(5));
-                }
-                labelPane.setStyle("fx-padding: 10;-fx-background-color: firebrick;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
-                labelPane.setMaxWidth(labelObject.isMiniLabel() ? 300 : 450);
-                FileInputStream inputStream = new FileInputStream(labelObject.getLabelPath());
-                ImageView labelImage = new ImageView(new Image(inputStream));
-                labelImage.setSmooth(false);
-                labelImage.setPreserveRatio(true);
-
-                labelImage.setFitWidth(labelObject.isMiniLabel() ? 300 : 450);
-                labelPane.getChildren().add(labelImage);
-                inputStream.close();
-
-                vBox.getChildren().add(labelPane);
-
-                HBox buttons = new HBox();
-                buttons.setPadding(new Insets(10));
-                buttons.setSpacing(20);
-                buttons.setAlignment(Pos.CENTER);
-                Button printButton = new Button("Print");
-                printButton.setId("print");
-                printButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent actionEvent) {
-                        int numOfCopies = 0;
-                        try {
-                            numOfCopies = Integer.parseInt(copies.getText());
-                            if(numOfCopies <= 0) {
-                                showAlert(Alert.AlertType.ERROR, new String[] {"Please enter a valid quantity for Copies"});
-                            } else if(numOfCopies > LabelHelper.MAX_COPIES) {
-                                showAlert(Alert.AlertType.ERROR, new String[] {"Maximum label that can be printed in one job is '" + LabelHelper.MAX_COPIES + "'. Please enter a quantity less than '" + LabelHelper.MAX_COPIES + "' for Copies"});
-                            } else {
-                                new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()), new Label5x3());
-                            }
-                        } catch (Exception e) {
-                            showError(e);
+                        if (labelObject.isMiniLabel()) {
+                            labelPane.setPadding(new Insets(10));
+                        } else {
+                            labelPane.setPadding(new Insets(5));
                         }
+                        labelPane.setStyle("fx-padding: 10;-fx-background-color: #ffffff;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
+                        labelPane.setMaxWidth(labelObject.isMiniLabel() ? 230 : 450);
+                        FileInputStream inputStream = new FileInputStream(labelObject.getLabelPath());
+                        ImageView labelImage = new ImageView(new Image(inputStream));
+                        labelImage.setSmooth(false);
+                        labelImage.setPreserveRatio(true);
+
+                        labelImage.setFitWidth(labelObject.isMiniLabel() ? 230 : 450);
+                        labelPane.getChildren().add(labelImage);
+                        inputStream.close();
+                        flowPane.getChildren().add(labelPane);
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                });
-                printButton.setPrefWidth(200);
-                Button cancelButton = new Button("Cancel");
-                cancelButton.setId("cancel");
-                cancelButton.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent actionEvent) {
-                        clearCenter();
-                        setFocus();
+                }
+                scrollPane.setContent(flowPane);
+            } else {
+                try {
+                    HBox hBox = new HBox();
+
+                    hBox.setAlignment(Pos.CENTER);
+                    hBox.setPadding(new Insets(15, 12, 15, 12));
+                    hBox.setSpacing(10);
+                    hBox.setMinHeight(60);
+                    final TextField copies = new TextField();
+                    copies.setPrefSize(80, 40);
+                    copies.setText("1");
+                    copies.selectAll();
+                    nodeReferences.add(1, copies);
+                    copies.setStyle("-fx-alignment: center;-fx-font-size:22px;-fx-font-weight: bold");
+
+                    Label label = new Label("Copies:");
+                    label.setStyle("-fx-alignment: center-right;-fx-font-size:28px;");
+
+                    hBox.getChildren().addAll(label, copies);
+                    vBox.getChildren().add(hBox);
+
+                    StackPane labelPane = new StackPane();
+                    if (labelObject.isMiniLabel()) {
+                        labelPane.setPadding(new Insets(10));
+                    } else {
+                        labelPane.setPadding(new Insets(5));
                     }
-                });
-                cancelButton.setPrefWidth(200);
-                buttons.getChildren().addAll(printButton, cancelButton);
-                vBox.getChildren().addAll(buttons);
-            } catch (IOException e) {
-                e.printStackTrace();
+                    labelPane.setStyle("fx-padding: 10;-fx-background-color: #ffffff;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
+                    labelPane.setMaxWidth(labelObject.isMiniLabel() ? 300 : 450);
+                    FileInputStream inputStream = new FileInputStream(labelObject.getLabelPath());
+                    ImageView labelImage = new ImageView(new Image(inputStream));
+                    labelImage.setSmooth(false);
+                    labelImage.setPreserveRatio(true);
+
+                    labelImage.setFitWidth(labelObject.isMiniLabel() ? 300 : 450);
+                    labelPane.getChildren().add(labelImage);
+                    inputStream.close();
+
+                    vBox.getChildren().add(labelPane);
+
+                    HBox buttons = new HBox();
+                    buttons.setPadding(new Insets(10));
+                    buttons.setSpacing(20);
+                    buttons.setAlignment(Pos.CENTER);
+                    Button printButton = new Button("Print");
+                    printButton.setId("print");
+                    printButton.setOnAction(new EventHandler<ActionEvent>() {
+                        @Override
+                        public void handle(ActionEvent actionEvent) {
+                            int numOfCopies = 0;
+                            try {
+                                numOfCopies = Integer.parseInt(copies.getText());
+                                if (numOfCopies <= 0) {
+                                    showAlert(Alert.AlertType.ERROR, new String[]{"Please enter a valid quantity for Copies"}, primaryStage);
+                                } else if (numOfCopies > LabelHelper.MAX_COPIES) {
+                                    showAlert(Alert.AlertType.ERROR, new String[]{"Maximum label that can be printed in one job is '" + LabelHelper.MAX_COPIES + "'. Please enter a quantity less than '" + LabelHelper.MAX_COPIES + "' for Copies"}, primaryStage);
+                                } else {
+                                    new PDFPrinter(new File(labelObject.getLabelPDFPath()), Integer.parseInt(copies.getText()), new Label5x3());
+                                }
+                            } catch (Exception e) {
+                                showError(e);
+                            }
+                        }
+                    });
+                    printButton.setPrefWidth(200);
+                    Button cancelButton = new Button("Cancel");
+                    cancelButton.setId("cancel");
+                    cancelButton.setOnAction(new EventHandler<ActionEvent>() {
+                        @Override
+                        public void handle(ActionEvent actionEvent) {
+                            clearCenter();
+                            setFocus();
+                        }
+                    });
+                    cancelButton.setPrefWidth(200);
+                    buttons.getChildren().addAll(printButton, cancelButton);
+                    vBox.getChildren().addAll(buttons);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
             stackPane.getChildren().add(0, vBox);
         } else if(stackPane.getChildren().size() == 0) {
@@ -496,7 +541,7 @@ public class LabelPrinter extends Application {
             @Override
             public void handle(ActionEvent actionEvent) {
                 if(id.getText().isEmpty()) {
-                    showAlert(Alert.AlertType.ERROR, new String[] {"\nPlease enter a valid SKU."});
+                    showAlert(Alert.AlertType.ERROR, new String[] {"\nPlease enter a valid SKU."}, primaryStage);
                 } else {
                     showLabelForSKU(id.getText());
                 }
@@ -512,7 +557,7 @@ public class LabelPrinter extends Application {
             @Override
             public void handle(ActionEvent actionEvent) {
                 if(id.getText().isEmpty()) {
-                    showAlert(Alert.AlertType.ERROR, new String[] {"\nPlease enter a valid SKU."});
+                    showAlert(Alert.AlertType.ERROR, new String[] {"\nPlease enter a valid SKU."}, primaryStage);
                 } else {
                     showLabelForSKU(id.getText());
                 }
