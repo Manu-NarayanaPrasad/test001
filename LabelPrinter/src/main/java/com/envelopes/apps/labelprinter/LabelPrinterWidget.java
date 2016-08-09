@@ -284,7 +284,7 @@ public class LabelPrinterWidget extends LabelPrinter {
         qtyLabel.setStyle("-fx-text-fill: white;-fx-font-family: Lato; -fx-font-size: 14px; -fx-font-weight: bold");
         TextField qtyTextField = new TextField();
         qtyTextField.setId("label-qty");
-        qtyTextField.setMaxWidth(30);
+        qtyTextField.setMaxWidth(60);
         qtyTextField.setAlignment(Pos.CENTER);
         qtyTextField.setPadding(new Insets(0));
         qtyTextField.setText("");
