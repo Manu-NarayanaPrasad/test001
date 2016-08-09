@@ -81,7 +81,7 @@ public class LabelPrinter extends Application {
     }
 
     protected void buildUI(Stage primaryStage) {
-        primaryStage.setAlwaysOnTop(true);
+//        primaryStage.setAlwaysOnTop(true);
         primaryStage.getIcons().add(new Image(LabelPrinter.class.getResourceAsStream("/assets/images/app-logo.png")));
         this.primaryStage = primaryStage;
         primaryStage.initStyle(StageStyle.UNDECORATED);
@@ -345,7 +345,7 @@ public class LabelPrinter extends Application {
                             } else if (numOfCopies > LabelHelper.MAX_COPIES) {
                                 showAlert(Alert.AlertType.ERROR, new String[]{"Maximum label that can be printed in one job is '" + LabelHelper.MAX_COPIES + "'. Please enter a quantity less than '" + LabelHelper.MAX_COPIES + "' for Copies"}, primaryStage);
                             } else {
-                                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPDFPath")), Integer.parseInt(copies.getText()), new Label5x3());
+                                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPDFPath")), Integer.parseInt(copies.getText()), new Label5x3(), LabelHelper.PREFERRED_PRINTER_NAME);
                             }
                         } catch (Exception e) {
                             showError(e);

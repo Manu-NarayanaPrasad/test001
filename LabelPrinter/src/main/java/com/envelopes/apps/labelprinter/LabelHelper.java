@@ -23,6 +23,7 @@ public class LabelHelper {
     public static String DEFAULT_LABEL_TYPE = "LABEL";
     private static String API_KEY = "b1a6fcad-20e3-4dc4-9347-d266fa012bee";
     private static String ENV = "PROD";
+    public static String PREFERRED_PRINTER_NAME = "";
     public static String CONFIG_FILE_LOCATION = LABEL_PRINTER_HOME + "labelPrinter.properties";
     public static String LABEL_PRINTER_CACHE_LOCATION = LABEL_PRINTER_HOME + "ProductLabels/";
     public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH1 = LABEL_PRINTER_CACHE_LOCATION + "packLabels/";
@@ -58,6 +59,7 @@ public class LabelHelper {
             properties.setProperty("defaultLabelType", DEFAULT_LABEL_TYPE);
             properties.setProperty("maxCopies", Integer.toString(MAX_COPIES));
             properties.setProperty("version", ENV);
+            properties.setProperty("preferredPrinterName", "");
             properties.store(fileOut, "Label Printer Configuration Properties");
             fileOut.close();
         } else {
@@ -71,6 +73,10 @@ public class LabelHelper {
 
             if(properties.containsKey("labelServerEndPoint")) {
                 LABEL_SERVER_END_POINT = properties.getProperty("labelServerEndPoint");
+            }
+
+            if(properties.containsKey("preferredPrinterName")) {
+                PREFERRED_PRINTER_NAME = properties.getProperty("preferredPrinterName");
             }
 
             if(properties.containsKey("maxCopies")) {

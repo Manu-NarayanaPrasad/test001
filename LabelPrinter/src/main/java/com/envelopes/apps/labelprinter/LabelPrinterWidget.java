@@ -554,7 +554,7 @@ public class LabelPrinterWidget extends LabelPrinter {
 
         for(LabelVO label : selectedLabels) {
             try {
-                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.getLabelPDFPath()), Integer.parseInt(label.getRequiredCopies()), new Label3x2());
+                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.getLabelPDFPath()), Integer.parseInt(label.getRequiredCopies()), new Label3x2(), LabelHelper.PREFERRED_PRINTER_NAME);
             } catch (Exception e) {
                 showError(e);
             }
