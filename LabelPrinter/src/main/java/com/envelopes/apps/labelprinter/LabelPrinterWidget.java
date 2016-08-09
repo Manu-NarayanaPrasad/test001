@@ -1,5 +1,6 @@
 package com.envelopes.apps.labelprinter;
 
+import com.envelopes.apps.labelprinter.paper.Label3x2;
 import com.sun.javafx.PlatformUtil;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
@@ -27,9 +28,16 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import org.apache.commons.lang3.math.NumberUtils;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
 
 /**
  * Created by Manu on 7/27/2016.
@@ -108,6 +116,269 @@ public class LabelPrinterWidget extends LabelPrinter {
         return fullWidgetBody;
     }
 
+    protected void showLabels(String orderIdOrProductIdWithQty) {
+        if(!panelVisible) {
+            showLabelPanel();
+        }
+        maskerPane.setVisible(true);
+        executorService.submit(() -> {
+            Future<List<Map<String, String>>> future = executorService.submit(() -> LabelHelper.getLabelsForOrderIdOrProductId(orderIdOrProductIdWithQty, true));
+            List<Map<String, String>> labels = null;
+            try {
+                labels = future.get();
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    maskerPane.setVisible(false);
+                    if(e.getCause() != null) {
+                        if(e.getCause().getCause() != null) {
+                            showError(e.getCause().getCause());
+                        } else {
+                            showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()}, null);
+                        }
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, new String[] {e.getMessage()}, null);
+                    }
+                    hideLabelPanel();
+                });
+            }
+            if(labels != null) {
+
+                final List<Map<String, String>> labelList = labels;
+                Platform.runLater(() -> {
+                    renderLabels(labelList);
+                    maskerPane.setVisible(false);
+                });
+            }
+        });
+    }
+
+    protected void reRenderLabel(Map<String, String> label) {
+        try {
+            FileInputStream inputStream = new FileInputStream(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPath"));
+            ((ImageView)primaryStage.getScene().lookup("#label-image-" + label.get("productId"))).setImage(new Image(inputStream));
+            inputStream.close();
+            hideLabelEditOption();
+            ((Button)primaryStage.getScene().lookup("#label-edit-button-" + label.get("productId"))).setOnAction(actionEvent -> showLabelEditOption(label.get("productId"), label.get("labelQty"), label.get("copies")));
+            labelVOs.put(label.get("productId"), new LabelVO(label.get("productId"), label.get("labelQty"), label.get("copies"), label.get("copies"), label.get("labelPDFPath")));
+        } catch (IOException e) {
+            showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()}, null);
+            hideLabelEditOption();
+        }
+    }
+
+    protected void renderLabels(List<Map<String, String>> labels) {
+        FlowPane labelsPane = (FlowPane)primaryStage.getScene().lookup("#labels-pane");
+        labelsPane.getChildren().clear();
+        for(Map<String, String> label : labels) {
+            try {
+                StackPane labelPane = new StackPane();
+                labelPane.setId("label-pane-" + label.get("productId"));
+                labelPane.getStyleClass().add("label-pane");
+                labelPane.setAlignment(Pos.BOTTOM_CENTER);
+                Button editButton = new Button("  ");
+                editButton.setTooltip(new Tooltip("Edit Label"));
+                editButton.setId("label-edit-button-" + label.get("productId"));
+                editButton.setStyle("-fx-cursor: hand");
+                editButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/edit-icon1.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
+                editButton.setOnAction(actionEvent -> showLabelEditOption(label.get("productId"), label.get("labelQty"), label.get("copies")));
+
+                Button printButton = new Button(" ");
+                printButton.setStyle("-fx-cursor: hand");
+                printButton.setId("label-toggle-print-" + label.get("productId"));
+                printButton.setTooltip(new Tooltip("Don't Print This Label"));
+                printButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/icon-print.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
+                printButton.setOnAction(actionEvent -> toggleLabel(label.get("productId"), false));
+
+                HBox printSettings = new HBox();
+                printSettings.setSpacing(5);
+                printSettings.getChildren().addAll(editButton, printButton);
+                printSettings.setAlignment(Pos.TOP_RIGHT);
+
+                labelPane.setStyle("-fx-background-color: #ffffff;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
+                labelPane.setMaxWidth(245);
+                StackPane disablePrintingPane = new StackPane();
+                disablePrintingPane.setVisible(false);
+                disablePrintingPane.setId("label-no-print-" + label.get("productId"));
+                disablePrintingPane.setStyle("-fx-cursor: hand");
+                disablePrintingPane.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/image-no-print.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
+                FileInputStream inputStream = new FileInputStream(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPath"));
+                ImageView labelImage = new ImageView(new Image(inputStream));
+                labelImage.setId("label-image-" + label.get("productId"));
+                labelImage.setSmooth(false);
+                labelImage.setPreserveRatio(true);
+                labelImage.setFitWidth(245);
+                StackPane labelImagePane = new StackPane();
+                labelImagePane.setAlignment(Pos.TOP_RIGHT);
+                labelImagePane.setPadding(new Insets(10));
+                labelImagePane.setOnMouseClicked((mouseEvent) -> hideLabelEditOption());
+                labelImagePane.getChildren().addAll(labelImage, disablePrintingPane, printSettings);
+
+                labelPane.getChildren().addAll(labelImagePane);
+                inputStream.close();
+                labelsPane.getChildren().addAll(labelPane);
+                labelVOs.put(label.get("productId"), new LabelVO(label.get("productId"), label.get("labelQty"), label.get("copies"), label.get("copies"), label.get("labelPDFPath")));
+            } catch (IOException e) {
+                showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()}, null);
+            }
+        }
+        ((Label)primaryStage.getScene().lookup("#items-number-label")).setText("Labels(s) : " + labels.size());
+        ((Button)primaryStage.getScene().lookup("#print-button")).setText("Print (" + labels.size() + ")");
+    }
+
+    protected String editingProductId = "";
+    protected Map<String, LabelVO> labelVOs = new HashMap<>();
+    protected void showLabelEditOption(String productId, String qty, String copies) {
+        hideLabelEditOption();
+        editingProductId = productId;
+        primaryStage.getScene().lookup("#label-edit-button-" + editingProductId).setVisible(false);
+        HBox labelEditOptionsPanel = createLabelEditOptionsPanel(productId);
+        ((TextField)labelEditOptionsPanel.lookup("#label-qty")).setText(qty);
+        ((TextField)labelEditOptionsPanel.lookup("#label-copies")).setText(copies);
+        ((StackPane)primaryStage.getScene().lookup("#label-pane-" + productId)).getChildren().add(labelEditOptionsPanel);
+    }
+
+    protected void hideLabelEditOption() {
+        if(!editingProductId.isEmpty()) {
+            primaryStage.getScene().lookup("#label-edit-button-" + editingProductId).setVisible(true);
+            StackPane labelPane = ((StackPane)primaryStage.getScene().lookup("#label-pane-" + editingProductId));
+            if(labelPane.getChildren().size() > 1) {
+                labelPane.getChildren().remove(1);
+            }
+            editingProductId = "";
+        }
+    }
+
+    protected void updatePrintLabelCount() {
+        int count = getSelectedLabels().size();
+        Button printButton = ((Button)primaryStage.getScene().lookup("#print-button"));
+        printButton.setText("Print (" + count + ")");
+        if(count > 0) {
+            printButton.setStyle("-fx-background-color: linear-gradient(green, darkgreen)");
+        } else {
+            printButton.setStyle("-fx-background-color: linear-gradient(grey, darkgrey)");
+        }
+    }
+
+    protected List<LabelVO> getSelectedLabels() {
+        List<LabelVO> selectedLabels = new ArrayList<>();
+        for(String key : labelVOs.keySet()) {
+            LabelVO labelVO = labelVOs.get(key);
+            if(labelVO.isPrintable()) {
+                selectedLabels.add(labelVO);
+            }
+        }
+        return selectedLabels;
+    }
+
+    protected HBox createLabelEditOptionsPanel(String productId) {
+        HBox editOptionsPanel = new HBox();
+        editOptionsPanel.setId("label-edit-panel");
+        editOptionsPanel.setAlignment(Pos.CENTER);
+        editOptionsPanel.setSpacing(10);
+        editOptionsPanel.setPadding(new Insets(2, 10, 2, 10));
+        editOptionsPanel.setStyle("-fx-background-color: #394046;-fx-background-radius: 0;");
+        editOptionsPanel.setMaxHeight(20);
+
+        Label qtyLabel = new Label("Qty:");
+
+        qtyLabel.setStyle("-fx-text-fill: white;-fx-font-family: Lato; -fx-font-size: 14px; -fx-font-weight: bold");
+        TextField qtyTextField = new TextField();
+        qtyTextField.setId("label-qty");
+        qtyTextField.setMaxWidth(30);
+        qtyTextField.setAlignment(Pos.CENTER);
+        qtyTextField.setPadding(new Insets(0));
+        qtyTextField.setText("");
+
+
+        Label copiesLabel = new Label("Copies:");
+        copiesLabel.setStyle("-fx-text-fill: white;-fx-font-family: Lato; -fx-font-size: 14px; -fx-font-weight: bold");
+        TextField copiesTextField = new TextField();
+        copiesTextField.setId("label-copies");
+        copiesTextField.setMaxWidth(30);
+        copiesTextField.setAlignment(Pos.CENTER);
+        copiesTextField.setPadding(new Insets(0));
+        copiesTextField.setText("");
+
+        Button applyButton = new Button("O K");
+        applyButton.getStyleClass().addAll("micro-btn", "green-btn");
+        applyButton.setOnAction(actionEvent -> updateLabel(productId, qtyTextField.getText().trim(), copiesTextField.getText().trim()));
+
+        editOptionsPanel.getChildren().addAll(qtyLabel, qtyTextField, copiesLabel, copiesTextField, applyButton);
+
+        return editOptionsPanel;
+    }
+
+    protected void updateLabel(String productId, final String qty, String copies) {
+        LabelVO labelVO = labelVOs.get(productId);
+        if(qty.equals(labelVO.getLabelQty())) {
+            hideLabelEditOption();
+            if(!copies.equals(labelVO.getRequiredCopies())) {
+                labelVO.setRequiredCopies(copies);
+                toggleLabel(productId, labelVO.isPrintable());
+            }
+        } else {
+            maskerPane.setVisible(true);
+            executorService.submit(() -> {
+                Future<List<Map<String, String>>> future = executorService.submit(() -> LabelHelper.getLabelsForOrderIdOrProductId(productId + "-" + qty, true));
+                List<Map<String, String>> labels = null;
+                try {
+                    labels = future.get();
+                } catch (Exception e) {
+                    Platform.runLater(() -> {
+                        maskerPane.setVisible(false);
+                        if (e.getCause() != null) {
+                            if (e.getCause().getCause() != null) {
+                                showError(e.getCause().getCause());
+                            } else {
+                                showAlert(Alert.AlertType.ERROR, new String[]{e.getCause().getMessage()}, null);
+                            }
+                        } else {
+                            showAlert(Alert.AlertType.ERROR, new String[]{e.getMessage()}, null);
+                        }
+                        hideLabelPanel();
+                    });
+                }
+                if (labels != null) {
+                    final List<Map<String, String>> labelList = labels;
+                    if (labels.size() > 0) {
+                        Platform.runLater(() -> {
+                            reRenderLabel(labelList.get(0));
+                            if(!copies.equals(labelVO.getRequiredCopies())) {
+                                labelVO.setRequiredCopies(copies);
+                                toggleLabel(productId, labelVO.isPrintable());
+                            }
+                            maskerPane.setVisible(false);
+                        });
+                    }
+                }
+            });
+        }
+    }
+
+    protected void toggleLabel(String productId, boolean activeFlag) {
+        LabelVO labelVO = labelVOs.get(productId);
+        if(activeFlag) {
+            primaryStage.getScene().lookup("#label-image-" + productId).setStyle("-fx-opacity: 100%");
+            primaryStage.getScene().lookup("#label-no-print-" + productId).setVisible(false);
+            Button togglePrintButton = (Button)primaryStage.getScene().lookup("#label-toggle-print-" + productId);
+            togglePrintButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/icon-print.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
+            togglePrintButton.setOnAction(actionEvent -> toggleLabel(productId, false));
+            togglePrintButton.setTooltip(new Tooltip("Don't Print This label"));
+            labelVO.setRequiredCopies(labelVO.getCopies());
+        } else {
+            primaryStage.getScene().lookup("#label-image-" + productId).setStyle("-fx-opacity: 20%");
+            primaryStage.getScene().lookup("#label-no-print-" + productId).setVisible(true);
+            Button togglePrintButton = (Button)primaryStage.getScene().lookup("#label-toggle-print-" + productId);
+            togglePrintButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/icon-no-print.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
+            togglePrintButton.setOnAction(actionEvent -> toggleLabel(productId, true));
+            togglePrintButton.setTooltip(new Tooltip("Print This label"));
+            labelVO.setRequiredCopies("0");
+        }
+        hideLabelEditOption();
+        ((Button)primaryStage.getScene().lookup("#label-edit-button-" + labelVO.getProductId())).setOnAction(actionEvent -> showLabelEditOption(labelVO.getProductId(), labelVO.getLabelQty(), labelVO.getRequiredCopies()));
+        updatePrintLabelCount();
+    }
+
     protected Node createMiniTitleBar() {
         HBox miniTitleBar = new HBox();
         miniTitleBar.setId("mini-title-bar");
@@ -129,7 +400,7 @@ public class LabelPrinterWidget extends LabelPrinter {
             if(idField.getText().isEmpty()) {
                 showAlert(Alert.AlertType.ERROR, new String[] {"\nPlease enter a valid Order Id."}, null);
             } else {
-                //showLabelForSKU(id.getText());
+                showLabels(idField.getText());
             }
 
         });
@@ -140,10 +411,11 @@ public class LabelPrinterWidget extends LabelPrinter {
         goButton.getStyleClass().addAll("mini-btn", "green-btn");
         goButton.setPrefSize(50, 10);
         goButton.setOnAction(actionEvent -> {
-            if(panelVisible) {
-                hideLabelPanel();
+            if(idField.getText().isEmpty()) {
+                showAlert(Alert.AlertType.ERROR, new String[] {"\nPlease enter a valid Order Id."}, null);
+            } else {
+                showLabels(idField.getText());
             }
-            showLabelPanel(idField.getText());
         });
 
         miniTitleBar.getChildren().addAll(logo, idField, goButton);
@@ -152,26 +424,58 @@ public class LabelPrinterWidget extends LabelPrinter {
         miniTitleBar.getChildren().addAll(titleBarButtons);
         HBox.setHgrow(titleBarButtons, Priority.ALWAYS);
 
-        miniTitleBar.setOnMousePressed(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent event) {
-                xOffset = event.getSceneX();
-                yOffset = event.getSceneY();
-            }
+        miniTitleBar.setOnMousePressed(event -> {
+            xOffset = event.getSceneX();
+            yOffset = event.getSceneY();
         });
-        miniTitleBar.setOnMouseDragged(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent event) {
-                primaryStage.setX(event.getScreenX() - xOffset);
-                primaryStage.setY(event.getScreenY() - yOffset);
-                if(primaryStage.getY() < minY) {
-                    primaryStage.setY(minY);
-                }
+        miniTitleBar.setOnMouseDragged(event -> {
+            primaryStage.setX(event.getScreenX() - xOffset);
+            primaryStage.setY(event.getScreenY() - yOffset);
+            if(primaryStage.getY() < minY) {
+                primaryStage.setY(minY);
             }
         });
 
         return miniTitleBar;
     }
+
+   /* protected void showMiniLabelForSKU(String productOrOrderId) {
+
+        showLabelPanel();
+        maskerPane.setVisible(true);
+        executorService.submit(() -> {
+            Future<LabelObject> future = executorService.submit(() -> LabelHelper.getLabelForProductId(productOrOrderId, true, LabelHelper.DEFAULT_LABEL_TYPE.startsWith("MINI")));
+            LabelObject labelObject = null;
+            try {
+                labelObject = future.get();
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    maskerPane.setVisible(false);
+                    if(e.getCause() != null) {
+                        if(e.getCause().getCause() != null) {
+                            showError(e.getCause().getCause());
+                        } else {
+                            showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()}, primaryStage);
+                        }
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, new String[] {e.getMessage()}, primaryStage);
+                    }
+                });
+            }
+            if(labelObject != null) {
+
+                final LabelObject obj = labelObject;
+                Platform.runLater(() -> {
+                    rootPane.setCenter(addMainArea(obj));
+                    if(!obj.isMiniLabel()) {
+                        nodeReferences.get(1).requestFocus();
+                    }
+                    maskerPane.setVisible(false);
+                });
+//            rootPane.setRight(addRightAreaForSKU());
+            }
+        });
+    }*/
 
     protected Node createFullTitleBar() {
         HBox fullTitleBar = (HBox)createTitleBar();
@@ -211,17 +515,20 @@ public class LabelPrinterWidget extends LabelPrinter {
         panelFooterBar.setStyle("-fx-background-color: #394046;-fx-font-weight: bold;-fx-font-size: 14px ");
         panelFooterBar.setPadding(new Insets(5, 5, 5, 12));
 
-        Label item1 = new Label("Item(s) : 15");
-        item1.getStyleClass().add("oswald-bold");
+        Label itemsLabel = new Label("");
+        itemsLabel.setId("items-number-label");
+        itemsLabel.getStyleClass().add("oswald-bold");
 
-        panelFooterBar.getChildren().addAll(item1);
+        panelFooterBar.getChildren().addAll(itemsLabel);
 
         HBox panelFooterBarButtons = new HBox();
         panelFooterBarButtons.setSpacing(20);
 
-        Button printButton = new Button("Print (15)");
+        Button printButton = new Button("Print");
+        printButton.setId("print-button");
         printButton.getStyleClass().addAll("mini-btn", "green-btn");
         printButton.setMinWidth(75);
+        printButton.setOnAction(actionEvent -> printSelectedLabels());
 
         Button cancelButton = new Button("Cancel");
         cancelButton.getStyleClass().addAll("mini-btn", "red-btn");
@@ -239,9 +546,25 @@ public class LabelPrinterWidget extends LabelPrinter {
         return panelFooterBar;
     }
 
+    protected void printSelectedLabels() {
+        List<LabelVO> selectedLabels = getSelectedLabels();
+        if (selectedLabels.size() <= 0) {
+            showAlert(Alert.AlertType.ERROR, new String[]{"Please select at least one label to print"}, primaryStage);
+        }
+
+        for(LabelVO label : selectedLabels) {
+            try {
+                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.getLabelPDFPath()), Integer.parseInt(label.getRequiredCopies()), new Label3x2());
+            } catch (Exception e) {
+                showError(e);
+            }
+        }
+    }
+
     protected Node createLabelPanel() {
         StackPane stackPane = new StackPane();
         stackPane.setStyle("-fx-background-color: #899096;");
+        stackPane.setMinHeight(200);
         VBox vBox = new VBox();
         vBox.setStyle("-fx-background-color: #899096;");
         vBox.setAlignment(Pos.TOP_CENTER);
@@ -254,13 +577,15 @@ public class LabelPrinterWidget extends LabelPrinter {
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(true);
         FlowPane flowPane = new FlowPane();
+        flowPane.setId("labels-pane");
         flowPane.setPadding(new Insets(10));
         flowPane.setAlignment(Pos.CENTER);
+
 
         flowPane.setStyle("-fx-background-color: #899096");
         flowPane.setVgap(10);
         flowPane.setHgap(10);
-        for(int i = 0; i < 15; i ++) {
+        /*for(int i = 0; i < 15; i ++) {
             try {
                 StackPane labelPane = new StackPane();
                 labelPane.setPadding(new Insets(10));
@@ -278,9 +603,9 @@ public class LabelPrinterWidget extends LabelPrinter {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
         scrollPane.setContent(flowPane);
-        stackPane.getChildren().add(scrollPane);
+        stackPane.getChildren().addAll(scrollPane, maskerPane);
         return stackPane;
     }
 
@@ -338,7 +663,6 @@ public class LabelPrinterWidget extends LabelPrinter {
         primaryStage.setX((primaryScreenBounds.getWidth() / 2) - 150);
         primaryStage.setY(minY);
     }
-
     protected void bindDraggable() {
         root.setOnMousePressed(event -> {
             xOffset = event.getSceneX();
@@ -365,7 +689,8 @@ public class LabelPrinterWidget extends LabelPrinter {
             }
         });
     }
-    protected void showLabelPanel(Object... args) {
+
+    protected void showLabelPanel() {
         ((StackPane)primaryStage.getScene().lookup("#widget-ui-body")).getChildren().add(1, createFullWidgetBody());
         ((Label)primaryStage.getScene().lookup("#title-text")).setText(((TextField)primaryStage.getScene().lookup("#id-field")).getText());
 
@@ -463,5 +788,44 @@ public class LabelPrinterWidget extends LabelPrinter {
         ((StackPane)primaryStage.getScene().lookup("#widget-ui-body")).getChildren().remove(1);
         fullWidget.setVisible(false);
         panelVisible = false;
+    }
+
+    class LabelVO {
+        String productId = "", labelQty = "", copies = "", requiredCopies = "", labelPDFPath = "";
+        LabelVO(String productId, String labelQty, String copies, String requiredCopies, String labelPDFPath) {
+            this.productId = productId;
+            this.labelQty = labelQty;
+            this.copies = copies;
+            this.requiredCopies = requiredCopies;
+            this.labelPDFPath = labelPDFPath;
+        }
+
+        public String getProductId() {
+            return productId;
+        }
+
+        public String getLabelQty() {
+            return labelQty;
+        }
+
+        public String getCopies() {
+            return copies;
+        }
+
+        public String getRequiredCopies() {
+            return requiredCopies;
+        }
+
+        public void setRequiredCopies(String requiredCopies) {
+            this.requiredCopies = requiredCopies;
+        }
+
+        public String getLabelPDFPath() {
+            return labelPDFPath;
+        }
+
+        public boolean isPrintable() {
+            return NumberUtils.toInt(requiredCopies, 0) > 0;
+        }
     }
 }

@@ -2,6 +2,15 @@
     /*-fx-background-image: url("white_carbonfiber.png");*/
 }
 
+@font-face {
+    font-family: 'FontAwesome';
+    src: url('../fonts/fontawesome-webfont.ttf');
+}
+
+.fa-label {
+    -fx-font-family: 'FontAwesome';
+}
+
 .text{
     -fx-font-smoothing-type: gray;
     -fx-font-family: Lato;
@@ -74,6 +83,17 @@
     -fx-font-weight: bold;
     -fx-font-size: 10px;
     -fx-padding: 6px;
+    -fx-cursor: hand;
+}
+
+.micro-btn {
+    -fx-background-radius: 2;
+    -fx-background-insets: 0;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 9px;
+    -fx-padding: 2px;
+    -fx-cursor: hand;
 }
 
 .green-btn {
@@ -82,6 +102,10 @@
 
 .red-btn {
     -fx-background-color: linear-gradient(#ff5400, #be1d00);
+}
+
+.disabled-btn {
+    -fx-background-color: linear-gradient(grey, darkgrey);
 }
 
 .oswald-bold {
