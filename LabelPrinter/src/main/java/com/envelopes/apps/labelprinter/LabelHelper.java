@@ -121,7 +121,7 @@ public class LabelHelper {
                 }
             } else {
                 if(result.containsKey("data")) {
-                    throw new LabelNotFoundException("No Label found for the given ProductId : " + orderOrProductIdWithQty, null);
+                    throw new LabelNotFoundException("No Label found for the given Id : " + orderOrProductIdWithQty, null);
                 } else {
                     throw new LabelNotFoundException("An error occurred while retrieving the label(s) from the server for the given Id : " + orderOrProductIdWithQty, null);
                 }

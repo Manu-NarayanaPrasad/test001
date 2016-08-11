@@ -6,10 +6,10 @@ import java.awt.print.Paper;
  * Created by Manu on 7/20/2016.
  */
 public class Label3x2 extends Paper {
-    protected static final double width = 4.0;
+    protected static final double width = 3.5;
     protected static final double height = 2.0;
-    protected static final double leftMargin = 0.6;
-    protected static final double rightMargin = 0.6;
+    protected static final double leftMargin = 0.5;
+    protected static final double rightMargin = 0.0;
     protected static final double topMargin = 0.0;
     protected static final double bottomMargin = 0.0;
     protected static final double scale = 72.0;

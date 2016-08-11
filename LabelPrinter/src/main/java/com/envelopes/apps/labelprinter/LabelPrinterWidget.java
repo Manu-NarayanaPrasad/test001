@@ -157,16 +157,19 @@ public class LabelPrinterWidget extends LabelPrinter {
             FileInputStream inputStream = new FileInputStream(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPath"));
             ((ImageView)primaryStage.getScene().lookup("#label-image-" + label.get("productId"))).setImage(new Image(inputStream));
             inputStream.close();
-            hideLabelEditOption();
-            ((Button)primaryStage.getScene().lookup("#label-edit-button-" + label.get("productId"))).setOnAction(actionEvent -> showLabelEditOption(label.get("productId"), label.get("labelQty"), label.get("copies")));
-            labelVOs.put(label.get("productId"), new LabelVO(label.get("productId"), label.get("labelQty"), label.get("copies"), label.get("copies"), label.get("labelPDFPath")));
+            ((Button)primaryStage.getScene().lookup("#label-edit-button-" + label.get("productId"))).setOnAction(actionEvent -> showLabelEditOption(label.get("productId"), label.get("labelQty")));
+            labelVOs.put(label.get("productId"), new LabelVO(label.get("productId"), label.get("labelQty"), label.get("copies"), labelVOs.get(label.get("productId")).getRequiredCopies(), label.get("labelPDFPath")));
+            setCopies(label.get("productId"), labelVOs.get(label.get("productId")).getRequiredCopies());
+            ((TextField)primaryStage.getScene().lookup("#label-qty")).setText(label.get("labelQty"));
+            hideLabelEditOption(label.get("productId"));
         } catch (IOException e) {
             showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()}, null);
-            hideLabelEditOption();
+            hideLabelEditOption(label.get("productId"));
         }
     }
 
     protected void renderLabels(List<Map<String, String>> labels) {
+        labelVOs.clear();
         FlowPane labelsPane = (FlowPane)primaryStage.getScene().lookup("#labels-pane");
         labelsPane.getChildren().clear();
         for(Map<String, String> label : labels) {
@@ -180,8 +183,10 @@ public class LabelPrinterWidget extends LabelPrinter {
                 editButton.setId("label-edit-button-" + label.get("productId"));
                 editButton.setStyle("-fx-cursor: hand");
                 editButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/edit-icon1.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
-                editButton.setOnAction(actionEvent -> showLabelEditOption(label.get("productId"), label.get("labelQty"), label.get("copies")));
+                editButton.setOnAction(actionEvent -> showLabelEditOption(label.get("productId"), label.get("labelQty")));
 
+                StackPane printButtonPane = new StackPane();
+                printButtonPane.setAlignment(Pos.TOP_CENTER);
                 Button printButton = new Button(" ");
                 printButton.setStyle("-fx-cursor: hand");
                 printButton.setId("label-toggle-print-" + label.get("productId"));
@@ -189,9 +194,14 @@ public class LabelPrinterWidget extends LabelPrinter {
                 printButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/icon-print.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
                 printButton.setOnAction(actionEvent -> toggleLabel(label.get("productId"), false));
 
+                Label copiesLabel = new Label("");
+                copiesLabel.setId("label-copies-label-" + label.get("productId"));
+                copiesLabel.setStyle("-fx-font-size: 10px;");
+                copiesLabel.setPadding(new Insets(20, 0, 0, 0));
+                printButtonPane.getChildren().addAll(copiesLabel, printButton);
                 HBox printSettings = new HBox();
                 printSettings.setSpacing(5);
-                printSettings.getChildren().addAll(editButton, printButton);
+                printSettings.getChildren().addAll(editButton, printButtonPane);
                 printSettings.setAlignment(Pos.TOP_RIGHT);
 
                 labelPane.setStyle("-fx-background-color: #ffffff;-fx-background-radius: 5;-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);");
@@ -217,32 +227,67 @@ public class LabelPrinterWidget extends LabelPrinter {
                 inputStream.close();
                 labelsPane.getChildren().addAll(labelPane);
                 labelVOs.put(label.get("productId"), new LabelVO(label.get("productId"), label.get("labelQty"), label.get("copies"), label.get("copies"), label.get("labelPDFPath")));
+                setCopies(label.get("productId"), label.get("copies"));
             } catch (IOException e) {
                 showAlert(Alert.AlertType.ERROR, new String[] {e.getCause().getMessage()}, null);
             }
         }
-        ((Label)primaryStage.getScene().lookup("#items-number-label")).setText("Labels(s) : " + labels.size());
+        ((Label)primaryStage.getScene().lookup("#items-number-label")).setText((labels.size() == 1 ? "Item :" : "Items :") + labels.size());
         ((Button)primaryStage.getScene().lookup("#print-button")).setText("Print (" + labels.size() + ")");
+    }
+
+    protected void setCopies(String productId, String copies) {
+        labelVOs.get(productId).setRequiredCopies(copies);
+        ((Label) primaryStage.getScene().lookup("#label-copies-label-" + productId)).setText(copies.equals("0") ? "" : copies);
+
     }
 
     protected String editingProductId = "";
     protected Map<String, LabelVO> labelVOs = new HashMap<>();
-    protected void showLabelEditOption(String productId, String qty, String copies) {
+    protected void showLabelEditOption(String productId, String qty) {
         hideLabelEditOption();
         editingProductId = productId;
         primaryStage.getScene().lookup("#label-edit-button-" + editingProductId).setVisible(false);
         HBox labelEditOptionsPanel = createLabelEditOptionsPanel(productId);
         ((TextField)labelEditOptionsPanel.lookup("#label-qty")).setText(qty);
-        ((TextField)labelEditOptionsPanel.lookup("#label-copies")).setText(copies);
+        ((TextField)labelEditOptionsPanel.lookup("#label-copies")).setText(labelVOs.get(productId).getRequiredCopies());
         ((StackPane)primaryStage.getScene().lookup("#label-pane-" + productId)).getChildren().add(labelEditOptionsPanel);
     }
 
-    protected void hideLabelEditOption() {
+    protected void hideLabelEditOption(String... productId) {
+        if(productId != null && productId.length == 1) {
+            editingProductId = productId[0];
+        }
         if(!editingProductId.isEmpty()) {
-            primaryStage.getScene().lookup("#label-edit-button-" + editingProductId).setVisible(true);
-            StackPane labelPane = ((StackPane)primaryStage.getScene().lookup("#label-pane-" + editingProductId));
-            if(labelPane.getChildren().size() > 1) {
-                labelPane.getChildren().remove(1);
+            boolean proceed = true;
+            String qty = ((TextField)primaryStage.getScene().lookup("#label-qty")).getText();
+            String copies = ((TextField)primaryStage.getScene().lookup("#label-copies")).getText();
+            if(!qty.equals("SAMPLES") && NumberUtils.toInt(qty, 0) == 0) {
+                qty = labelVOs.get(editingProductId).getLabelQty();
+            }
+
+            if(NumberUtils.toInt(copies, 0) == 0) {
+                copies = labelVOs.get(editingProductId).getRequiredCopies();
+            }
+
+            if(!qty.equals(labelVOs.get(editingProductId).getLabelQty()) && !copies.equals(labelVOs.get(editingProductId).getRequiredCopies())) {
+                Alert applyChanges = showConfirmation(new String[] {"Do you want to apply the changes made to Qty and Copies?"}, null);
+                proceed = applyChanges.getResult() == ButtonType.NO;
+            } else if(!qty.equals(labelVOs.get(editingProductId).getLabelQty())) {
+                Alert applyChanges = showConfirmation(new String[] {"Do you want to apply the changes made to Qty?"}, null);
+                proceed = applyChanges.getResult() == ButtonType.NO;
+            } else if(!copies.equals(labelVOs.get(editingProductId).getRequiredCopies())) {
+                Alert applyChanges = showConfirmation(new String[] {"Do you want to apply the changes made to Copies?"}, null);
+                proceed = applyChanges.getResult() == ButtonType.NO;
+            }
+            if(!proceed) {
+                updateLabel(editingProductId, qty, copies);
+            } else {
+                primaryStage.getScene().lookup("#label-edit-button-" + editingProductId).setVisible(true);
+                StackPane labelPane = ((StackPane) primaryStage.getScene().lookup("#label-pane-" + editingProductId));
+                if (labelPane.getChildren().size() > 1) {
+                    labelPane.getChildren().remove(1);
+                }
             }
             editingProductId = "";
         }
@@ -311,11 +356,14 @@ public class LabelPrinterWidget extends LabelPrinter {
     protected void updateLabel(String productId, final String qty, String copies) {
         LabelVO labelVO = labelVOs.get(productId);
         if(qty.equals(labelVO.getLabelQty())) {
-            hideLabelEditOption();
             if(!copies.equals(labelVO.getRequiredCopies())) {
-                labelVO.setRequiredCopies(copies);
-                toggleLabel(productId, labelVO.isPrintable());
+//                labelVO.setRequiredCopies(copies);
+                setCopies(productId, copies);
+                if(!labelVO.isPrintable()) {
+                    toggleLabel(productId, labelVO.isPrintable());
+                }
             }
+            hideLabelEditOption();
         } else {
             maskerPane.setVisible(true);
             executorService.submit(() -> {
@@ -342,11 +390,14 @@ public class LabelPrinterWidget extends LabelPrinter {
                     final List<Map<String, String>> labelList = labels;
                     if (labels.size() > 0) {
                         Platform.runLater(() -> {
-                            reRenderLabel(labelList.get(0));
                             if(!copies.equals(labelVO.getRequiredCopies())) {
-                                labelVO.setRequiredCopies(copies);
-                                toggleLabel(productId, labelVO.isPrintable());
+//                                labelVO.setRequiredCopies(copies);
+                                setCopies(productId, copies);
+                                if(!labelVO.isPrintable()) {
+                                    toggleLabel(productId, labelVO.isPrintable());
+                                }
                             }
+                            reRenderLabel(labelList.get(0));
                             maskerPane.setVisible(false);
                         });
                     }
@@ -364,7 +415,8 @@ public class LabelPrinterWidget extends LabelPrinter {
             togglePrintButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/icon-print.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
             togglePrintButton.setOnAction(actionEvent -> toggleLabel(productId, false));
             togglePrintButton.setTooltip(new Tooltip("Don't Print This label"));
-            labelVO.setRequiredCopies(labelVO.getCopies());
+//            labelVO.setRequiredCopies(labelVO.getCopies());
+            setCopies(productId, labelVO.getCopies());
         } else {
             primaryStage.getScene().lookup("#label-image-" + productId).setStyle("-fx-opacity: 20%");
             primaryStage.getScene().lookup("#label-no-print-" + productId).setVisible(true);
@@ -372,10 +424,11 @@ public class LabelPrinterWidget extends LabelPrinter {
             togglePrintButton.setBackground(new Background(new BackgroundImage( new Image( getClass().getResource("/assets/images/icon-no-print.png").toExternalForm()), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)));
             togglePrintButton.setOnAction(actionEvent -> toggleLabel(productId, true));
             togglePrintButton.setTooltip(new Tooltip("Print This label"));
-            labelVO.setRequiredCopies("0");
+//            labelVO.setRequiredCopies("0");
+            setCopies(productId, "0");
         }
         hideLabelEditOption();
-        ((Button)primaryStage.getScene().lookup("#label-edit-button-" + labelVO.getProductId())).setOnAction(actionEvent -> showLabelEditOption(labelVO.getProductId(), labelVO.getLabelQty(), labelVO.getRequiredCopies()));
+        ((Button)primaryStage.getScene().lookup("#label-edit-button-" + labelVO.getProductId())).setOnAction(actionEvent -> showLabelEditOption(labelVO.getProductId(), labelVO.getLabelQty()));
         updatePrintLabelCount();
     }
 
@@ -554,7 +607,7 @@ public class LabelPrinterWidget extends LabelPrinter {
 
         for(LabelVO label : selectedLabels) {
             try {
-                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.getLabelPDFPath()), Integer.parseInt(label.getRequiredCopies()), new Label3x2(), LabelHelper.PREFERRED_PRINTER_NAME);
+                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.getLabelPDFPath()), Integer.parseInt(label.getRequiredCopies()), new Label3x2(), LabelHelper.PREFERRED_PRINTER_NAME, true);
             } catch (Exception e) {
                 showError(e);
             }

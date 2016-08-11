@@ -124,6 +124,20 @@ public class LabelPrinter extends Application {
         setFocus();
     }
 
+    protected Alert showConfirmation(String[] args, Stage owner) {
+        Alert dlg = new Alert(Alert.AlertType.CONFIRMATION, "");
+        dlg.getButtonTypes().clear();
+        dlg.getButtonTypes().addAll(ButtonType.YES, ButtonType.NO);
+        dlg.setHeaderText("");
+        dlg.setTitle("Label Printer - Envelopes.com");
+        dlg.getDialogPane().setContentText(args[0]);
+        dlg.initStyle(StageStyle.UTILITY);
+        dlg.initOwner(owner);
+        dlg.showAndWait();
+        setFocus();
+        return dlg;
+    }
+
     protected void clearCenter() {
         rootPane.setRight(null);
         if(((StackPane)rootPane.getCenter()).getChildren().size() > 1) {
@@ -345,7 +359,7 @@ public class LabelPrinter extends Application {
                             } else if (numOfCopies > LabelHelper.MAX_COPIES) {
                                 showAlert(Alert.AlertType.ERROR, new String[]{"Maximum label that can be printed in one job is '" + LabelHelper.MAX_COPIES + "'. Please enter a quantity less than '" + LabelHelper.MAX_COPIES + "' for Copies"}, primaryStage);
                             } else {
-                                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPDFPath")), Integer.parseInt(copies.getText()), new Label5x3(), LabelHelper.PREFERRED_PRINTER_NAME);
+                                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPDFPath")), Integer.parseInt(copies.getText()), new Label5x3(), LabelHelper.PREFERRED_PRINTER_NAME, false);
                             }
                         } catch (Exception e) {
                             showError(e);

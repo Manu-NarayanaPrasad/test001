@@ -7,7 +7,9 @@ import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.ResolutionSyntax;
 import javax.print.attribute.standard.Copies;
+import javax.print.attribute.standard.PrinterResolution;
 import javax.swing.*;
 import java.awt.print.*;
 import java.io.File;
@@ -21,7 +23,7 @@ import java.nio.channels.FileChannel;
  */
 public class PDFPrinter {
 
-    public PDFPrinter(File file, int copies, Paper paper, String preferredPrinterName) {
+    public PDFPrinter(File file, int copies, Paper paper, String preferredPrinterName, boolean miniLabel) {
         try {
             FileInputStream fis = new FileInputStream(file);
 
@@ -45,6 +47,11 @@ public class PDFPrinter {
             if(StringUtils.isNotEmpty(preferredPrinterName)) {
                 pjob.setPrintService(getPrintService(preferredPrinterName));
             }
+            aset.add(javax.print.attribute.standard.PrintQuality.HIGH);
+            if(miniLabel) {
+                aset.add(new PrinterResolution(175, 200, ResolutionSyntax.DPI));
+            }
+
             // Send print job to default printer
 //            if (pjob.printDialog(/*aset*/)) {
                 pjob.print(aset);
