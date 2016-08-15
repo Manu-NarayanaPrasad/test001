@@ -158,7 +158,7 @@ public class LabelPrinterWidget extends LabelPrinter {
             ((ImageView)primaryStage.getScene().lookup("#label-image-" + label.get("productId") + "_" + index)).setImage(new Image(inputStream));
             inputStream.close();
             ((Button)primaryStage.getScene().lookup("#label-edit-button-" + label.get("productId") + "_" + index)).setOnAction(actionEvent -> showLabelEditOption(label.get("productId"), index,  label.get("labelQty")));
-            labelVOs.put(label.get("productId") + "_" + index, new LabelVO(label.get("productId"), label.get("labelQty"), label.get("copies"), labelVOs.get(label.get("productId")).getRequiredCopies(), label.get("labelPDFPath"), index));
+            labelVOs.put(label.get("productId") + "_" + index, new LabelVO(label.get("productId"), label.get("labelQty"), label.get("copies"), labelVOs.get(label.get("productId") + "_" + index).getRequiredCopies(), label.get("labelPDFPath"), index));
             setCopies(label.get("productId"), index,  labelVOs.get(label.get("productId") + "_" + index).getRequiredCopies());
             ((TextField)primaryStage.getScene().lookup("#label-qty")).setText(label.get("labelQty"));
             hideLabelEditOption(index, label.get("productId"));
