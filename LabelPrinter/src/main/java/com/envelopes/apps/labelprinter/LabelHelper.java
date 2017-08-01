@@ -28,8 +28,10 @@ public class LabelHelper {
     public static String LABEL_PRINTER_CACHE_LOCATION = LABEL_PRINTER_HOME + "ProductLabels/";
     public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH1 = LABEL_PRINTER_CACHE_LOCATION + "packLabels/";
     public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH2 = LABEL_PRINTER_CACHE_LOCATION + "miniLabels/";
+    public static String LABEL_PRINTER_DIRECTORY_GENERATION_PATH3 = LABEL_PRINTER_CACHE_LOCATION + "folderSampleLabels/";
     public static String GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/serveLabelForStream?filePath=/uploads/productLabels/";
     public static String GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData?";
+    public static String GET_FOLDER_SAMPLE_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getFolderSampleLabelData?";
     public static String GET_LABEL_DATA_END_POINT2 = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData2?";
     public static int MAX_COPIES = 100;
     protected static String[] fileTypes = {".pdf", ".png"};
@@ -44,6 +46,12 @@ public class LabelHelper {
         if(!testFile.exists()) {
             new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH2).mkdirs();
         }
+
+        testFile = new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH3);
+        if(!testFile.exists()) {
+            new File(LABEL_PRINTER_DIRECTORY_GENERATION_PATH3).mkdirs();
+        }
+
         checkConfigFile();
         return "";
     }
@@ -102,6 +110,7 @@ public class LabelHelper {
         LABEL_PRINTER_DIRECTORY_GENERATION_PATH2 = LABEL_PRINTER_CACHE_LOCATION + "MiniLabels/";
         GET_FILE_FROM_SERVER_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/serveLabelForStream?filePath=/uploads/productLabels/";
         GET_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getLabelData?";
+        GET_FOLDER_SAMPLE_LABEL_DATA_END_POINT = LABEL_SERVER_END_POINT + "envelopes/control/getFolderSampleLabelData?";
         if(!ENV.equalsIgnoreCase("PROD")) {
             disableSslVerification();
         }
@@ -132,6 +141,34 @@ public class LabelHelper {
 
         return (List<Map<String, String>>)result.get("data");
     }
+
+    public static List<Map<String, String>> getLabelsForJobNumber(String jobNumber) throws LabelNotFoundException {
+        Map<String, Object> result;
+        try {
+            result = getJSON(GET_FOLDER_SAMPLE_LABEL_DATA_END_POINT + "jobNumber=" + jobNumber);
+            if((boolean)result.get("success")) {
+                List<Map<String, String>> labelsData = (List<Map<String, String>>) result.get("data");
+                for (Map<String, String> labelData : labelsData) {
+                    boolean availableInCache = labelAvailableInCache(labelData) && cacheNotExpired(labelData);
+                    if(!availableInCache) {
+                        getLabelFileFromServer2(labelData);
+                    }
+                }
+            } else {
+                if(result.containsKey("data")) {
+                    throw new LabelNotFoundException("No Label found for the given Job# : " + jobNumber, null);
+                } else {
+                    throw new LabelNotFoundException("An error occurred while retrieving the label(s) from the server for the given Job# : " + jobNumber, null);
+                }
+            }
+        } catch(Exception e) {
+            throw new LabelNotFoundException("An error occurred while retrieving the label(s) from the server for the given Job# : " + jobNumber, e);
+        }
+
+        return (List<Map<String, String>>)result.get("data");
+    }
+
+
 
     protected static boolean cacheNotExpired(Map<String, String> labelData) {
         File labelFile = new File(LABEL_PRINTER_CACHE_LOCATION + labelData.get("labelPDFPath"));
