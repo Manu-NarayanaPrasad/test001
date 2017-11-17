@@ -56,6 +56,7 @@ public class PDFPrinter {
 //            if (pjob.printDialog(/*aset*/)) {
                 pjob.print(aset);
 //            }
+            fis.close();
         } catch (IOException e) {
             e.printStackTrace();
         } catch (PrinterException e) {

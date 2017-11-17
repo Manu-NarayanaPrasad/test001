@@ -1,6 +1,6 @@
 package com.envelopes.apps.labelprinter;
 
-import com.envelopes.apps.labelprinter.paper.Label5x3;
+import com.envelopes.apps.labelprinter.paper.Label4x3;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.*;
@@ -359,7 +359,7 @@ public class FolderLabelPrinter extends Application {
                             } else if (numOfCopies > LabelHelper.MAX_COPIES) {
                                 showAlert(Alert.AlertType.ERROR, new String[]{"Maximum label that can be printed in one job is '" + LabelHelper.MAX_COPIES + "'. Please enter a quantity less than '" + LabelHelper.MAX_COPIES + "' for Copies"}, primaryStage);
                             } else {
-                                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPDFPath")), Integer.parseInt(copies.getText()), new Label5x3(), LabelHelper.PREFERRED_PRINTER_NAME, false);
+                                new PDFPrinter(new File(LabelHelper.LABEL_PRINTER_CACHE_LOCATION + label.get("labelPDFPath")), Integer.parseInt(copies.getText()), new Label4x3(), LabelHelper.PREFERRED_PRINTER_NAME, false);
                             }
                         } catch (Exception e) {
                             showError(e);
