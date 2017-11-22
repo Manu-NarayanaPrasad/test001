@@ -20,6 +20,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.controlsfx.control.MaskerPane;
 import org.controlsfx.dialog.ExceptionDialog;
 
@@ -150,11 +151,17 @@ public class FolderLabelPrinter extends Application {
     }
 
     protected void showLabelForJobNumber(String jobNumber) {
+        int index = 1;
         maskerPane.setVisible(true);
         clearCenter();
-
+        if(jobNumber.contains("-")) {
+            index = NumberUtils.toInt(jobNumber.substring(jobNumber.indexOf("-") + 1), 1);
+            jobNumber = jobNumber.substring(0, jobNumber.indexOf("-"));
+        }
+        final String _jobNumber = jobNumber;
+        final int _index = index;
         executorService.submit(() -> {
-            Future<List<Map<String, String>>> future = executorService.submit(() -> LabelHelper.getLabelsForJobNumber(jobNumber));
+            Future<List<Map<String, String>>> future = executorService.submit(() -> LabelHelper.getLabelsForJobNumber(_jobNumber));
             List<Map<String, String>> labels = null;
             try {
                 labels = future.get();
@@ -174,7 +181,7 @@ public class FolderLabelPrinter extends Application {
             }
             if(labels != null) {
 
-                final Map<String, String> label = labels.get(0);
+                final Map<String, String> label = labels.get(_index - 1);
                 Platform.runLater(() -> {
                     rootPane.setCenter(addMainArea(label));
                     nodeReferences.get(1).requestFocus();
